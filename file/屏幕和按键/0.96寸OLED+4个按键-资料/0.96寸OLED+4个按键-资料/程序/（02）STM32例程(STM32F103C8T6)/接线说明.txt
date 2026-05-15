@@ -1,0 +1,15 @@
+案例采用STM32F103C8T6开发板
+
+按键接线：
+GPIO，A口的1，2，3，4口
+#define S1 GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_1)
+#define S2 GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_2)
+#define S3 GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_3)
+#define S4 GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_4)
+
+
+液晶屏接口
+/*STM32F103C8T6芯片的硬件I2C: PB6 -- SCL; PB7 -- SDA */
+
+VCC：3.3V
+

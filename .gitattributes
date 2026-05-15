@@ -1,0 +1,108 @@
+# =============================================================================
+# FloraMate · Git 行尾与二进制处理规则
+# =============================================================================
+# 仓库内统一以 LF 存储；Windows 上 checkout 时按本文件规则决定是否转 CRLF。
+# 修改本文件后建议执行 `git add --renormalize .` 让现有文件按新规则重新规范化。
+# =============================================================================
+
+# 默认：自动检测文本/二进制（仅作兜底，具体类型在下方显式列出）
+* text=auto
+
+# -----------------------------------------------------------------------------
+# 源代码 / 头文件：强制 LF（跨平台编辑器 diff 干净）
+# -----------------------------------------------------------------------------
+*.c            text eol=lf
+*.h            text eol=lf
+*.cpp          text eol=lf
+*.hpp          text eol=lf
+*.cc           text eol=lf
+*.s            text eol=lf
+*.S            text eol=lf
+*.ld           text eol=lf
+
+# -----------------------------------------------------------------------------
+# 构建脚本 / 工程配置：强制 LF
+# -----------------------------------------------------------------------------
+Makefile       text eol=lf
+*.mk           text eol=lf
+*.cmake        text eol=lf
+CMakeLists.txt text eol=lf
+*.json         text eol=lf
+*.xml          text eol=lf
+*.yml          text eol=lf
+*.yaml         text eol=lf
+*.toml         text eol=lf
+.cproject      text eol=lf
+.project       text eol=lf
+.mxproject     text eol=lf
+*.ioc          text eol=lf
+*.prefs        text eol=lf
+.editorconfig  text eol=lf
+.gitattributes text eol=lf
+.gitignore     text eol=lf
+.clang-format  text eol=lf
+
+# -----------------------------------------------------------------------------
+# 文档 / 文本：强制 LF
+# -----------------------------------------------------------------------------
+*.md           text eol=lf
+*.txt          text eol=lf
+*.rst          text eol=lf
+LICENSE*       text eol=lf
+README*        text eol=lf
+
+# -----------------------------------------------------------------------------
+# 脚本：Unix 工具链需要 LF（Windows 上 checkout 也保持 LF，避免 bash/sh 失败）
+# -----------------------------------------------------------------------------
+*.sh           text eol=lf
+*.py           text eol=lf
+
+# Windows 批处理：必须 CRLF 才能在 cmd.exe 正常运行
+*.bat          text eol=crlf
+*.cmd          text eol=crlf
+*.ps1          text eol=crlf
+
+# -----------------------------------------------------------------------------
+# 第三方 Windows 工具链文件（Keil / IAR / 老旧 IDE）：保留 CRLF
+# -----------------------------------------------------------------------------
+*.uvproj       text eol=crlf
+*.uvopt        text eol=crlf
+*.uvprojx      text eol=crlf
+*.uvoptx       text eol=crlf
+*.uvgui*       text eol=crlf
+*.bak          text eol=crlf
+*.ewp          text eol=crlf
+*.eww          text eol=crlf
+
+# -----------------------------------------------------------------------------
+# 二进制：不做行尾转换、不做 diff
+# -----------------------------------------------------------------------------
+*.hex          binary
+*.bin          binary
+*.elf          binary
+*.map          binary
+*.axf          binary
+*.lib          binary
+*.a            binary
+*.o            binary
+*.obj          binary
+
+# 图片
+*.png          binary
+*.jpg          binary
+*.jpeg         binary
+*.gif          binary
+*.bmp          binary
+*.ico          binary
+*.svg          text eol=lf
+
+# 文档/压缩
+*.pdf          binary
+*.zip          binary
+*.7z           binary
+*.tar          binary
+*.gz           binary
+*.rar          binary
+*.xlsx         binary
+*.docx         binary
+*.pptx         binary
