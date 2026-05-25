@@ -55,7 +55,7 @@ void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, RLY_RSV_CH6_Pin|RLY_MAIN_CH5_Pin|RLY_VALVE_Z1_Pin|RLY_VALVE_Z2_Pin
-                          |RLY_VALVE_Z3_Pin|RLY_VALVE_Z4_Pin, GPIO_PIN_SET);
+                          |RLY_VALVE_Z3_Pin|RLY_VALVE_Z4_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : LED_HEARTBEAT_PC13_Pin */
   GPIO_InitStruct.Pin = LED_HEARTBEAT_PC13_Pin;

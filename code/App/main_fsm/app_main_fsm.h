@@ -33,7 +33,11 @@
  */
 typedef enum
 {
-    APP_MAIN_FSM_STATE_BOOT = 0, /**< 启动并准备进入自检                    */
+    APP_MAIN_FSM_STATE_SERIAL_WAIT = 0, /**< 上电等待：串口 debug 或 K1+K2 进手动 */
+    APP_MAIN_FSM_STATE_SERIAL_DEBUG,    /**< 手动-串口命令（原串口调试）           */
+    APP_MAIN_FSM_STATE_MANUAL_SELECT,   /**< 手动模式：选择串口/按键控制           */
+    APP_MAIN_FSM_STATE_MANUAL_KEY,      /**< 手动-按键控制继电器/PWM               */
+    APP_MAIN_FSM_STATE_BOOT,            /**< 自动：启动并准备自检                  */
     APP_MAIN_FSM_STATE_SELFTEST, /**< 继电器/外设自检                       */
     APP_MAIN_FSM_STATE_IDLE_3S,  /**< 倒计时等待用户进入菜单                */
     APP_MAIN_FSM_STATE_AUTO_RUN, /**< 4 路顺序执行子 FSM                    */
@@ -90,10 +94,36 @@ uint32_t App_Main_Fsm_AutoRunStartMs(void);
 Fm_ErrorCode App_Main_Fsm_LastError(void);
 
 /**
+ * @brief   当前主状态是否接受按键扫描/事件
+ * @retval  true=允许按键输入；false=主循环应暂停按键扫描
+ */
+bool App_Main_Fsm_KeyInputEnabled(void);
+
+/**
  * @brief   外部模块上报致命错误（强制进入 ERROR 状态）
  * @param   err  错误码
  * @note    内部立即 Bsp_Relay_MainOffForce + Bsp_Pump_Pwm_Stop。
  */
 void App_Main_Fsm_SignalError(Fm_ErrorCode err);
+
+/**
+ * @brief   退出手动模式，回到上电等待窗（关输出、停串口调试）
+ * @note    等待窗超时后自动进入 BOOT → 自动浇灌流程。
+ */
+void App_Main_Fsm_EnterBootWait(void);
+
+/**
+ * @brief   回到手动选择页（用于手动子模式返回上一级）
+ */
+void App_Main_Fsm_EnterManualSelect(void);
+
+/** 上电等待窗内 K1+K2 组合键已按住时长百分比（0~100），未按住返回 0 */
+uint8_t App_Main_Fsm_GetBootWaitComboPercent(void);
+
+/** Boot Wait 剩余毫秒（仅 SERIAL_WAIT；组合键按下时冻结倒计时） */
+uint32_t App_Main_Fsm_GetBootWaitRemainMs(void);
+
+/** Boot Wait 是否因 K1+K2 按下而暂停自动倒计时 */
+bool App_Main_Fsm_IsBootWaitTimerPaused(void);
 
 #endif /* APP_MAIN_FSM_H */

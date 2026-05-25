@@ -4,7 +4,7 @@
  * @Date         : 2026-05-15 11:30:00
  * @LastEditors  : tonymeng0910@gmail.com
  * @LastEditTime : 2026-05-15 14:50:00
- * @Description  : SSD1315 / SSD1306 兼容 OLED 驱动接口 (128×64, I²C)
+ * @Description  : 1.3 寸 128×64 OLED（默认 SH1106，见 bsp_oled_config.h）
  *
  * Copyright (c) 2026 by tony.meng, All Rights Reserved.
  *
@@ -22,6 +22,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "floramate_types.h"
+#include "bsp_oled_config.h"
 
 #define BSP_OLED_ADDR_7BIT (0x3CU)                           /**< I²C 地址        */
 #define BSP_OLED_WIDTH     (128U)                            /**< 像素宽          */
@@ -123,6 +124,20 @@ void Bsp_Oled_FbDrawChar6x8(uint8_t x_col, uint8_t page, char c, bool inverse);
  * @note    超出右边界 (x_col + 6*N > 128) 的字符会被自动截断。
  */
 void Bsp_Oled_FbDrawStr6x8(uint8_t x_col, uint8_t page, const char *s, bool inverse);
+
+/**
+ * @brief   按像素 y 坐标绘制 6×8 单字符
+ * @param   x_col    列坐标（像素）
+ * @param   y        顶部 y 坐标（像素）
+ * @param   c        ASCII 字符
+ * @param   inverse  true=反白 / false=正常
+ */
+void Bsp_Oled_FbDrawChar6x8At(uint8_t x_col, uint8_t y, char c, bool inverse);
+
+/**
+ * @brief   按像素 y 坐标绘制 6×8 字符串
+ */
+void Bsp_Oled_FbDrawStr6x8At(uint8_t x_col, uint8_t y, const char *s, bool inverse);
 
 /**
  * @brief   绘制 16×16 大字（仅支持 0~9 和 ':'）

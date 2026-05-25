@@ -42,4 +42,9 @@ void App_Display_Tick(void);
  */
 void App_Display_MarkDirty(void);
 
+/**
+ * @brief   立即按当前状态全屏重绘并 Flush（状态切换时调用，避免残影叠加）
+ */
+void App_Display_FlushNow(void);
+
 #endif /* APP_DISPLAY_H */

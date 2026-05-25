@@ -50,8 +50,11 @@
 									<listOptionValue builtIn="false" value="../App/init"/>
 									<listOptionValue builtIn="false" value="../App/log"/>
 									<listOptionValue builtIn="false" value="../App/main_fsm"/>
+									<listOptionValue builtIn="false" value="../App/manual_key"/>
+									<listOptionValue builtIn="false" value="../App/manual_select"/>
 									<listOptionValue builtIn="false" value="../App/menu"/>
 									<listOptionValue builtIn="false" value="../App/pump_fsm"/>
+									<listOptionValue builtIn="false" value="../App/serial_debug"/>
 									<listOptionValue builtIn="false" value="../Bsp/eeprom"/>
 									<listOptionValue builtIn="false" value="../Bsp/key"/>
 									<listOptionValue builtIn="false" value="../Bsp/oled"/>
@@ -92,9 +95,9 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Common"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="App"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Bsp"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Common"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 					</sourceEntries>
@@ -147,8 +150,11 @@
 									<listOptionValue builtIn="false" value="../App/init"/>
 									<listOptionValue builtIn="false" value="../App/log"/>
 									<listOptionValue builtIn="false" value="../App/main_fsm"/>
+									<listOptionValue builtIn="false" value="../App/manual_key"/>
+									<listOptionValue builtIn="false" value="../App/manual_select"/>
 									<listOptionValue builtIn="false" value="../App/menu"/>
 									<listOptionValue builtIn="false" value="../App/pump_fsm"/>
+									<listOptionValue builtIn="false" value="../App/serial_debug"/>
 									<listOptionValue builtIn="false" value="../Bsp/eeprom"/>
 									<listOptionValue builtIn="false" value="../Bsp/key"/>
 									<listOptionValue builtIn="false" value="../Bsp/oled"/>
@@ -189,9 +195,9 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
+						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Common"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="App"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Bsp"/>
-						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Common"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
 					</sourceEntries>

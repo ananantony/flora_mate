@@ -29,7 +29,7 @@
 /**
  * @brief   水泵 PWM 初始化
  * @note    1) 启动 TIM2_CH1 PWM 输出；2) 立即写 CCR=0；3) PA0 在 CubeMX 已配 AF1。
- *          上电默认 0% 占空比，配合 CH5=OFF，水泵静音。
+ *          上电默认 0% 占空比，配合 CH1=OFF，水泵静音。
  */
 void Bsp_Pump_Pwm_Init(void);
 
@@ -37,7 +37,7 @@ void Bsp_Pump_Pwm_Init(void);
  * @brief   设置水泵 PWM 占空比（百分比）
  * @param   duty_percent  目标占空比 [0..95]；> 95 自动夹到 95
  * @retval  FM_OK                  写入成功
- * @retval  FM_ERR_013_PUMP_NO_POWER  CH5=OFF 时拒绝 duty>0（避免逻辑空转）
+ * @retval  FM_ERR_013_PUMP_NO_POWER  CH1=OFF 时拒绝 duty>0（避免逻辑空转）
  * @note    duty=0 时强制写 CCR=0 而非比较寄存器低值，确保 MOS 完全关断。
  */
 Fm_ErrorCode Bsp_Pump_Pwm_SetDutyPercent(uint8_t duty_percent);

@@ -8,7 +8,7 @@
 |---|---|
 | 文档名 | 花伴 FloraMate · CubeMX 工程配置表 |
 | 版本 | **V1.2**（对齐硬件方案 V1.0.2） |
-| 修订记录 | V1.0 首版；**V1.1**：水泵 PWM 频率由 25 kHz 调整为 **1 kHz**（TIM2 PSC=83 / ARR=999）；取消"未用引脚设为 Analog 省电"配置；删除 W25Q 升级路径。**V1.2**：以 CubeMX 6.17 实际生成代码为准回写 PLL 参数（**PLLN 336→168 / PLLP DIV4→DIV2 / PLLQ 7→4**，SYSCLK 仍为 84 MHz 不变；CubeMX 选了等效但 VCO 频率更低的路径，EMC 略优） |
+| 修订记录 | V1.0 首版；**V1.1**：水泵 PWM 频率由 25 kHz 调整为 **1 kHz**（TIM2 PSC=83 / ARR=999）；取消"未用引脚设为 Analog 省电"配置；删除 W25Q 升级路径。**V1.2**：以 CubeMX 6.17 实际生成代码为准回写 PLL 参数（**PLLN 336→168 / PLLP DIV4→DIV2 / PLLQ 7→4**，SYSCLK 仍为 84 MHz 不变；CubeMX 选了等效但 VCO 频率更低的路径，EMC 略优）。**V1.3**：水泵 PWM 频率调整为 **100 Hz**（TIM2 PSC=839 / ARR=999）。 |
 | 芯片 | **STM32F401RCT6**（Cortex-M4F，84 MHz，64 KB SRAM，256 KB Flash，LQFP64） |
 | 开发板 | WeAct MiniSTM32F401RCT6 V3.x（**HSE = 25 MHz**，LSE = 32.768 kHz） |
 | 依据文档 | `硬件设计方案_V1.0.md`（§ 5 引脚分配表 / § 6 子模块接线 / § 7 PDN） / `总体设计书_V1.2.md`（§ 3 ~ § 5） |
@@ -92,7 +92,7 @@ Voltage Scale          : Scale 2   (F401 ≤ 84 MHz 用 Scale 2)
 
 | 外设 | 引脚 / 模式 | CubeMX 主要选择 |
 |---|---|---|
-| **GPIO** 继电器 ×6 | PB12/13/14/15/PB1/PB0 = `GPIO_Output` | Label: `RLY_VALVE_Z1~Z4` / `RLY_MAIN_CH5` / `RLY_RSV_CH6`；**初始 High**，低电平触发 |
+| **GPIO** 继电器 ×6 | PB12/13/14/15/PB1/PB0 = `GPIO_Output` | Cube 标签可仍为 `RLY_VALVE_Z1`~`Z4`/`RLY_MAIN_CH5`/`RLY_RSV_CH6`；**逻辑映射**：PB12=CH1 泵电源，PB13~15/PB1=CH2~5 阀，PB0=CH6；**初始 Low** |
 | **GPIO** 按键 ×4 | PA1/PA2/PA3/PA4 = `GPIO_Input` + **Pull-up** | Label: `KEY_K1~K4`；按下接 GND |
 | **GPIO** 心跳灯 | PC13 = `GPIO_Output` | Label: `LED_HEARTBEAT_PC13`；初始 **High（灭）** |
 | **GPIO** 传感器预留 | PA8 = `GPIO_Input` + **Pull-up** | Label: `SENSOR_RSV_PA8`；Phase 2 浮球/水浸用 |
@@ -110,15 +110,15 @@ Voltage Scale          : Scale 2   (F401 ≤ 84 MHz 用 Scale 2)
 
 | 引脚 | Label | Output level | Mode | Speed | Pull | 说明 |
 |---|---|---|---|---|---|---|
-| **PB12** | `RLY_VALVE_Z1` | **High** | Push-Pull | Low | No pull | CH1 区阀 1，低电平吸合 |
-| **PB13** | `RLY_VALVE_Z2` | **High** | Push-Pull | Low | No pull | CH2 区阀 2 |
-| **PB14** | `RLY_VALVE_Z3` | **High** | Push-Pull | Low | No pull | CH3 区阀 3 |
-| **PB15** | `RLY_VALVE_Z4` | **High** | Push-Pull | Low | No pull | CH4 区阀 4 |
-| **PB1** | `RLY_MAIN_CH5` | **High** | Push-Pull | Low | No pull | **CH5 安全总闸**，低电平吸合；**默认 High = 释放 = 水泵失电**，符合 Fail-Safe |
-| **PB0** | `RLY_RSV_CH6` | **High** | Push-Pull | Low | No pull | CH6 预留 |
+| **PB12** | `RLY_VALVE_Z1`（逻辑 CH1） | **Low** | Push-Pull | Low | No pull | **CH1 水泵总电源**；默认 Low=水泵失电 |
+| **PB13** | `RLY_VALVE_Z2` | **Low** | Push-Pull | Low | No pull | CH2 电磁阀 1 |
+| **PB14** | `RLY_VALVE_Z3` | **Low** | Push-Pull | Low | No pull | CH3 电磁阀 2 |
+| **PB15** | `RLY_VALVE_Z4` | **Low** | Push-Pull | Low | No pull | CH4 电磁阀 3 |
+| **PB1** | `RLY_MAIN_CH5` | **Low** | Push-Pull | Low | No pull | CH5 电磁阀 4 |
+| **PB0** | `RLY_RSV_CH6` | **Low** | Push-Pull | Low | No pull | CH6 备用 |
 | **PC13** | `LED_HEARTBEAT_PC13` | **High** | Push-Pull | Low | No pull | 板载红色 LED；低电平点亮；上电先灭，固件 500ms 翻转 |
 
-> **极性铁律**：继电器**跳线帽必须打在 L（COM-L 低电平触发）档**。GPIO 默认 High = 全部继电器释放（水泵/阀均 OFF）。CubeMX 中的 `Output level = High` 严格遵守。
+> **极性铁律**：继电器**跳线帽必须打在 H（COM-H 高电平触发）档**。GPIO 默认 Low = 全部继电器释放（水泵/阀均 OFF）。CubeMX 中的 `Output level = Low` 严格遵守。
 
 ### 5.2 GPIO 输入 — 4 路按键 + 1 路传感器预留
 
@@ -156,9 +156,9 @@ Voltage Scale          : Scale 2   (F401 ≤ 84 MHz 用 Scale 2)
 
 | 项 | 数值 | 计算 / 说明 |
 |---|---|---|
-| **Prescaler (PSC)** | **83** | 84 MHz / (83+1) = 1 MHz 计数频率 |
+| **Prescaler (PSC)** | **839** | 84 MHz / (839+1) = 100 kHz 计数频率 |
 | **Counter Mode** | Up | — |
-| **Counter Period (ARR)** | **999** | 1 MHz / (999+1) = **1.000 kHz** PWM 频率 ★ |
+| **Counter Period (ARR)** | **999** | 100 kHz / (999+1) = **100 Hz** PWM 频率 ★ |
 | Internal Clock Division (CKD) | No Division | — |
 | **auto-reload preload** | **Enable** | 占空比修改与下一周期同步生效，无毛刺 |
 | Trigger Output (TRGO) Parameters → Master/Slave Mode | **Disable** | 本设计不做主从触发 |
@@ -336,8 +336,8 @@ Voltage Scale          : Scale 2   (F401 ≤ 84 MHz 用 Scale 2)
 | **PA13** | SWDIO | **SYS Debug: SW** | 必保留 |
 | **PA14** | SWCLK | **SYS Debug: SW** | 必保留 |
 | **PA15** | 引出 | 未配置（保持 Reset 默认） | 备用 |
-| **PB0** | 引出 | **GPIO Output High PP** `RLY_RSV_CH6` | 继电器 CH6（预留） |
-| **PB1** | 引出 | **GPIO Output High PP** `RLY_MAIN_CH5` | **继电器 CH5 安全总闸** ★ |
+| **PB0** | 引出 | **GPIO Output Low PP** `RLY_RSV_CH6` | 继电器 CH6（预留） |
+| **PB1** | 引出 | **GPIO Output Low PP** `RLY_MAIN_CH5` | **继电器 CH5 电磁阀 4** |
 | **PB2** | BOOT1 / 引出 | 未配置（保持 Reset 默认） | 不作业务 |
 | **PB3** | 引出 | 未配置（保持 Reset 默认） | 备用 |
 | **PB4** | 引出 | 未配置（保持 Reset 默认） | 备用 |
@@ -347,10 +347,10 @@ Voltage Scale          : Scale 2   (F401 ≤ 84 MHz 用 Scale 2)
 | **PB8** | 引出 | 未配置（保持 Reset 默认） | 备用 |
 | **PB9** | 引出 | 未配置（保持 Reset 默认） | 备用 |
 | **PB10** | 引出 | 未配置（保持 Reset 默认） | 备用 |
-| **PB12** | 引出 | **GPIO Output High PP** `RLY_VALVE_Z1` | 继电器 CH1（阀 1） |
-| **PB13** | 引出 | **GPIO Output High PP** `RLY_VALVE_Z2` | 继电器 CH2（阀 2） |
-| **PB14** | 引出 | **GPIO Output High PP** `RLY_VALVE_Z3` | 继电器 CH3（阀 3） |
-| **PB15** | 引出 | **GPIO Output High PP** `RLY_VALVE_Z4` | 继电器 CH4（阀 4） |
+| **PB12** | 引出 | **GPIO Output Low PP** `RLY_VALVE_Z1` | 继电器 CH1（阀 1） |
+| **PB13** | 引出 | **GPIO Output Low PP** `RLY_VALVE_Z2` | 继电器 CH2（阀 2） |
+| **PB14** | 引出 | **GPIO Output Low PP** `RLY_VALVE_Z3` | 继电器 CH3（阀 3） |
+| **PB15** | 引出 | **GPIO Output Low PP** `RLY_VALVE_Z4` | 继电器 CH4（阀 4） |
 | **PC13** | 板载 LED D3 | **GPIO Output High PP** `LED_HEARTBEAT_PC13` | 心跳灯，低电平点亮 |
 | **PC14** | LSE Y1 | 保留（不启用 RTC，**勿**改 GPIO） | — |
 | **PC15** | LSE Y1 | 保留 | — |
@@ -399,7 +399,7 @@ for (uint8_t addr = 1; addr < 128; addr++) {
 
 ### 9.4 GPIO 上电默认态确认
 
-`MX_GPIO_Init()` 生成后会先把 6 路继电器 GPIO 写成 **High**（释放），与 CubeMX 中 `Output level=High` 一致。**确认这一行在 `MX_xxx_Init()` 调用顺序中先于任何业务代码**，避免上电瞬间继电器抽搐。
+`MX_GPIO_Init()` 生成后会先把 6 路继电器 GPIO 写成 **Low**（释放），与 CubeMX 中 `Output level=Low` 一致。**确认这一行在 `MX_xxx_Init()` 调用顺序中先于任何业务代码**，避免上电瞬间继电器抽搐。
 
 ────────────────────────────────────────
 
@@ -419,7 +419,7 @@ for (uint8_t addr = 1; addr < 128; addr++) {
 | 硬件方案章节 | CubeMX 对应 | 检查点 |
 |---|---|---|
 | § 5 全引脚分配表 | § 8 全引脚分配总表 | 逐行核对引脚号一致 |
-| § 6.1 继电器低电平触发 | § 5.1 继电器 GPIO 初始 High | 与 Fail-Safe 默认安全态一致 |
+| § 6.1 继电器高电平触发 | § 5.1 继电器 GPIO 初始 Low | 与 Fail-Safe 默认安全态一致 |
 | § 6.2 PC817+LR7843 高电平有效 | § 5.4 TIM2 CH Polarity = High | 一致 |
 | § 6.3 OLED I²C 0x3C | § 5.5 I2C1 Fast Mode 400kHz | I²C1 配置 OK |
 | § 6.4 AT24C64 I²C 0x50 + WP 跳线 | § 5.5 I2C1 共用 + § 9.3 扫描验证 | 一致 |
@@ -450,9 +450,9 @@ for (uint8_t addr = 1; addr < 128; addr++) {
 | 3 | Pinout 视图 PB6/PB7 | 显示 `I2C1_SCL` / `I2C1_SDA`（绿色） |
 | 4 | Pinout 视图 PA13/PA14 | 显示 `SYS_JTMS-SWDIO` / `SYS_JTCK-SWCLK`（绿色） |
 | 5 | Pinout 视图 PA9/PA10 | 显示 `USART1_TX` / `USART1_RX`（绿色） |
-| 6 | 继电器 6 引脚 Output level | 全部 **High** |
+| 6 | 继电器 6 引脚 Output level | 全部 **Low** |
 | 7 | 按键 4 引脚 + PA8 | 全部 **GPIO_Input + Pull-up** |
-| 8 | TIM2 ARR/PSC | **PSC=83, ARR=999**（1 kHz PWM） |
+| 8 | TIM2 ARR/PSC | **PSC=839, ARR=999**（100 Hz PWM） |
 | 9 | TIM2 CCR1 | **0**（上电不起转） |
 | 10 | I2C1 Speed | **Fast Mode 400000 Hz** |
 | 11 | USART1 Baud | **115200 8N1** |
@@ -486,7 +486,7 @@ RCC.APB1Freq_Value=42000000
 RCC.APB2Freq_Value=84000000
 RCC.APB1TimFreq_Value=84000000
 
-TIM2.Prescaler=83
+TIM2.Prescaler=839
 TIM2.Period=999
 TIM2.Channel-PWM Generation1 CH1=TIM_CHANNEL_1
 TIM2.Pulse-PWM Generation1 CH1=0

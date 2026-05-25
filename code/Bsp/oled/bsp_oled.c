@@ -4,7 +4,7 @@
  * @Date         : 2026-05-15 11:30:00
  * @LastEditors  : tonymeng0910@gmail.com
  * @LastEditTime : 2026-05-15 14:50:00
- * @Description  : SSD1315 / SSD1306 兼容 OLED 驱动实现（含帧缓冲与局部 flush）
+ * @Description  : 1.3 寸 128×64 OLED（SH1106 默认，可选 SSD1306/1315）
  *
  * Copyright (c) 2026 by tony.meng, All Rights Reserved.
  *
@@ -17,6 +17,7 @@
  *  |-------------------------------------------------------------------------|
  */
 #include "bsp_oled.h"
+#include "bsp_oled_config.h"
 #include "bsp_oled_font.h"
 #include "bsp_tick.h"
 #include "i2c.h"
@@ -74,34 +75,66 @@ bool Bsp_Oled_IsOnline(void)
     return s_online;
 }
 
+#if BSP_OLED_USE_SH1106
+/** SH1106：Raspberry Pi / Waveshare 常用序列（无 0x20 寻址命令） */
+static const uint8_t s_init_sh1106[] = {
+    0xAE,       /* Display OFF                                   */
+    0xD5, 0x80, /* Display clock divide                          */
+    0xA8, 0x3F, /* Multiplex ratio 63 (64 rows)                  */
+    0xD3, 0x00, /* Display offset                              */
+    0x40,       /* Display start line = 0                        */
+    0x8D, 0x14, /* Charge pump ON                                */
+    0xA1,       /* Segment remap                               */
+    0xC8,       /* COM scan direction reverse                    */
+    0xDA, 0x12, /* COM pins hardware config                      */
+    0x81, 0x7F, /* Contrast                                    */
+    0xD9, 0xF1, /* Pre-charge                                  */
+    0xDB, 0x40, /* VCOMH                                       */
+    0xA4,       /* Output from RAM                             */
+    0xA6,       /* Normal display                              */
+    0xAF        /* Display ON                                  */
+};
+#else
+/** SSD1306 / SSD1315：页寻址模式，与帧缓冲 page 布局一致 */
+static const uint8_t s_init_ssd1306[] = {
+    0xAE,
+    0xD5, 0x80,
+    0xA8, 0x3F,
+    0xD3, 0x00,
+    0x40,
+    0x8D, 0x14,
+    0x20, 0x02, /* Page addressing（非 Horizontal）              */
+    0xA1,
+    0xC8,
+    0xDA, 0x12,
+    0x81, 0x7F,
+    0xD9, 0xF1,
+    0xDB, 0x40,
+    0xA4,
+    0xA6,
+    0x2E,
+    0xAF
+};
+#endif
+
+static Fm_ErrorCode Bsp_Oled_SendInitSeq(const uint8_t *seq, uint32_t len)
+{
+    for (uint32_t i = 0U; i < len; i++)
+    {
+        if (Bsp_Oled_WriteCmd(seq[i]) != FM_OK)
+        {
+            return FM_ERR_002_I2C_OLED;
+        }
+    }
+    return FM_OK;
+}
+
 /**
  * @brief   OLED 上电初始化
  * @retval  FM_OK / FM_ERR_002_I2C_OLED
- * @note    厂家典型序列：内部 charge pump、水平地址模式、列/行映射翻转、
- *          对比度 0x80、VCOMH 0.77×Vcc、Display ON。结束后帧缓冲清零并 Flush 一次。
  */
 Fm_ErrorCode Bsp_Oled_Init(void)
 {
-    static const uint8_t init_seq[] = {
-        0xAE,       /* Display OFF                                  */
-        0xD5, 0x80, /* Clock Divide Ratio / OSC Freq                */
-        0xA8, 0x3F, /* Multiplex Ratio = 64 - 1                     */
-        0xD3, 0x00, /* Display Offset = 0                           */
-        0x40,       /* Display Start Line = 0                       */
-        0x8D, 0x14, /* Enable Charge Pump                            */
-        0x20, 0x00, /* Memory Addressing Mode = Horizontal           */
-        0xA1,       /* Segment remap (col127 → SEG0)                 */
-        0xC8,       /* COM scan dir reverse                          */
-        0xDA, 0x12, /* COM Pins HW Cfg                               */
-        0x81, 0x80, /* Contrast = 128                                */
-        0xD9, 0xF1, /* Pre-charge period                             */
-        0xDB, 0x40, /* VCOMH = 0.77 × Vcc                            */
-        0xA4,       /* Output follows RAM                            */
-        0xA6,       /* Normal display (not inverted)                 */
-        0x2E,       /* Deactivate scroll                             */
-        0xAF        /* Display ON                                    */
-    };
-
     if (HAL_I2C_IsDeviceReady(&hi2c1, OLED_DEV_ADDR_W, 3U, 50U) != HAL_OK)
     {
         s_online = false;
@@ -109,13 +142,17 @@ Fm_ErrorCode Bsp_Oled_Init(void)
     }
     s_online = true;
 
-    for (uint32_t i = 0U; i < sizeof(init_seq); i++)
+#if BSP_OLED_USE_SH1106
+    if (Bsp_Oled_SendInitSeq(s_init_sh1106, sizeof(s_init_sh1106)) != FM_OK)
     {
-        if (Bsp_Oled_WriteCmd(init_seq[i]) != FM_OK)
-        {
-            return FM_ERR_002_I2C_OLED;
-        }
+        return FM_ERR_002_I2C_OLED;
     }
+#else
+    if (Bsp_Oled_SendInitSeq(s_init_ssd1306, sizeof(s_init_ssd1306)) != FM_OK)
+    {
+        return FM_ERR_002_I2C_OLED;
+    }
+#endif
 
     Bsp_Oled_FbClear();
     return Bsp_Oled_Flush();
@@ -267,6 +304,54 @@ void Bsp_Oled_FbDrawStr6x8(uint8_t x_col, uint8_t page, const char *s, bool inve
 }
 
 /**
+ * @brief   绘制 6×8 单字符（按像素 y 坐标，允许非 page 对齐）
+ */
+void Bsp_Oled_FbDrawChar6x8At(uint8_t x_col, uint8_t y, char c, bool inverse)
+{
+    if ((y >= BSP_OLED_HEIGHT) || (x_col >= (BSP_OLED_WIDTH - 5U)))
+    {
+        return;
+    }
+
+    uint8_t        idx   = ((c >= ' ') && (c <= '~')) ? (uint8_t)(c - ' ') : 0U;
+    const uint8_t *glyph = g_font_6x8[idx];
+
+    for (uint8_t col = 0U; col < 6U; col++)
+    {
+        uint8_t bits = glyph[col];
+        for (uint8_t row = 0U; row < 8U; row++)
+        {
+            uint8_t py = (uint8_t)(y + row);
+            if (py >= BSP_OLED_HEIGHT)
+            {
+                break;
+            }
+            bool on = ((bits & (uint8_t)(1U << row)) != 0U);
+            if (inverse)
+            {
+                on = !on;
+            }
+            Bsp_Oled_FbDrawPixel((uint8_t)(x_col + col), py, on);
+        }
+    }
+}
+
+/**
+ * @brief   绘制 6×8 字符串（按像素 y 坐标，自动右截断）
+ */
+void Bsp_Oled_FbDrawStr6x8At(uint8_t x_col, uint8_t y, const char *s, bool inverse)
+{
+    if (s == 0)
+        return;
+    while ((*s != '\0') && (x_col <= (BSP_OLED_WIDTH - 6U)))
+    {
+        Bsp_Oled_FbDrawChar6x8At(x_col, y, *s, inverse);
+        x_col = (uint8_t)(x_col + 6U);
+        s++;
+    }
+}
+
+/**
  * @brief   绘制 16×16 大字（占两个 page 行）
  * @param   x_col  起始列
  * @param   page   起始行号（占用 page 与 page+1）
@@ -304,30 +389,55 @@ void Bsp_Oled_FbDrawBigDigit(uint8_t x_col, uint8_t page, char c)
 
 /* ==== 推送 ======================================================== */
 
+#if BSP_OLED_USE_SH1106
 /**
- * @brief   推送某几行 page 到 OLED 显存
- * @param   page_start  起始 page [0..7]
- * @param   page_count  行数（自动 clamp）
- * @retval  FM_OK / FM_ERR_002_I2C_OLED
- * @note    采用水平地址模式 + Column 0..127 / Page page_start..end 的窗口，
- *          逐行 128 B 发送；每行约 3.3 ms（I²C 400 kHz）。
+ * @brief   SH1106 按页推送（列地址 = COL_OFFSET .. COL_OFFSET+127）
+ * @note    参考 Raspberry Pi pico-examples i2c/1106oled/sh1106.py show()
  */
-Fm_ErrorCode Bsp_Oled_FlushPages(uint8_t page_start, uint8_t page_count)
+static Fm_ErrorCode Bsp_Oled_FlushPages_Sh1106(uint8_t page_start, uint8_t page_count)
 {
-    if (page_start >= BSP_OLED_PAGES)
-        return FM_ERR_002_I2C_OLED;
-    if ((page_start + page_count) > BSP_OLED_PAGES)
+    const uint8_t col_low  = (uint8_t)(0x00U | (BSP_OLED_COL_OFFSET & 0x0FU));
+    const uint8_t col_high = (uint8_t)(0x10U | ((BSP_OLED_COL_OFFSET >> 4) & 0x0FU));
+    Fm_ErrorCode  err;
+
+    for (uint8_t p = 0U; p < page_count; p++)
     {
-        page_count = (uint8_t)(BSP_OLED_PAGES - page_start);
+        const uint8_t page = (uint8_t)(page_start + p);
+
+        err = Bsp_Oled_WriteCmd((uint8_t)(0xB0U | (page & 0x07U)));
+        if (err != FM_OK)
+            return err;
+        err = Bsp_Oled_WriteCmd(col_low);
+        if (err != FM_OK)
+            return err;
+        err = Bsp_Oled_WriteCmd(col_high);
+        if (err != FM_OK)
+            return err;
+
+        uint16_t off = (uint16_t)(page * BSP_OLED_WIDTH);
+        err          = Bsp_Oled_WriteData(&s_fb[off], BSP_OLED_WIDTH);
+        if (err != FM_OK)
+            return err;
     }
+    return FM_OK;
+}
+#endif
+
+/**
+ * @brief   SSD1306：列/页窗口 + 逐页写 128 B
+ */
+static Fm_ErrorCode Bsp_Oled_FlushPages_Ssd1306(uint8_t page_start, uint8_t page_count)
+{
     Fm_ErrorCode err;
+    const uint8_t col_end = (uint8_t)(BSP_OLED_COL_OFFSET + BSP_OLED_WIDTH - 1U);
+
     err = Bsp_Oled_WriteCmd(0x21U);
     if (err != FM_OK)
         return err;
-    err = Bsp_Oled_WriteCmd(0x00U);
+    err = Bsp_Oled_WriteCmd(BSP_OLED_COL_OFFSET);
     if (err != FM_OK)
         return err;
-    err = Bsp_Oled_WriteCmd(0x7FU);
+    err = Bsp_Oled_WriteCmd(col_end);
     if (err != FM_OK)
         return err;
     err = Bsp_Oled_WriteCmd(0x22U);
@@ -339,6 +449,7 @@ Fm_ErrorCode Bsp_Oled_FlushPages(uint8_t page_start, uint8_t page_count)
     err = Bsp_Oled_WriteCmd((uint8_t)(page_start + page_count - 1U));
     if (err != FM_OK)
         return err;
+
     for (uint8_t p = 0U; p < page_count; p++)
     {
         uint16_t off = (uint16_t)((page_start + p) * BSP_OLED_WIDTH);
@@ -347,6 +458,29 @@ Fm_ErrorCode Bsp_Oled_FlushPages(uint8_t page_start, uint8_t page_count)
             return err;
     }
     return FM_OK;
+}
+
+/**
+ * @brief   推送某几行 page 到 OLED 显存
+ */
+Fm_ErrorCode Bsp_Oled_FlushPages(uint8_t page_start, uint8_t page_count)
+{
+    if (page_start >= BSP_OLED_PAGES)
+        return FM_ERR_002_I2C_OLED;
+    if ((page_start + page_count) > BSP_OLED_PAGES)
+    {
+        page_count = (uint8_t)(BSP_OLED_PAGES - page_start);
+    }
+    if (page_count == 0U)
+    {
+        return FM_OK;
+    }
+
+#if BSP_OLED_USE_SH1106
+    return Bsp_Oled_FlushPages_Sh1106(page_start, page_count);
+#else
+    return Bsp_Oled_FlushPages_Ssd1306(page_start, page_count);
+#endif
 }
 
 /**

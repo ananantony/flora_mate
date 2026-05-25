@@ -4,7 +4,7 @@
  * @Date         : 2026-05-15 11:30:00
  * @LastEditors  : tonymeng0910@gmail.com
  * @LastEditTime : 2026-05-15 14:50:00
- * @Description  : 4 按键扫描实现（20 ms 节拍 + 3 次去抖 + LONG/HOLD 阈值）
+ * @Description  : 独立按键模块×4（按下低电平）；20ms 扫描 + 去抖 + LONG/HOLD
  *
  * Copyright (c) 2026 by tony.meng, All Rights Reserved.
  *
@@ -65,7 +65,7 @@ static uint16_t        s_hold_ms = BSP_KEY_HOLD_MS_DEFAULT;
  * @brief   读取一个按键的原始电平（电平归一化为"按下=1"）
  * @param   id  按键 ID
  * @retval  1=按下 / 0=松开
- * @note    硬件接法：MCU 内部上拉，按下接 GND；因此低电平 = 按下。
+ * @note    独立按键模块：常态高、按下低（MCU 内部上拉，按下接 GND）。
  */
 static uint8_t Bsp_Key_ReadRaw(Bsp_Key_Id id)
 {

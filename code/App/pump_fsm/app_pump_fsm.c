@@ -5,8 +5,8 @@
  * @LastEditors  : tonymeng0910@gmail.com
  * @LastEditTime : 2026-05-15 14:50:00
  * @Description  : 单路浇灌子状态机实现
- * @note         顺序：阀ON → 等机械→ CH5 ON → 稳压 → 阶梯PWM → ramp → CH5 OFF → 阀OFF → 静默 → DONE
- *               关键铁律：先开分阀再开 CH5；先关 CH5 再关分阀（防水锤/空抽）。
+ * @note         顺序：阀ON → 等机械→ CH1 水泵电源 ON → 稳压 → 阶梯PWM → ramp → 关 CH1 → 阀OFF → 静默 → DONE
+ *               关键铁律：先开分阀(CH2~5)再开水泵总电源(CH1)；先关 CH1 再关阀。
  *
  * Copyright (c) 2026 by tony.meng, All Rights Reserved.
  *
@@ -26,9 +26,9 @@
 #include "bsp_tick.h"
 
 #define VALVE_OPEN_SETTLE_MS (200U) /**< 分阀吸合后等待机械到位（ms） */
-#define MAIN_STABILIZE_MS    (100U) /**< CH5 吸合后稳压等待（ms） */
+#define MAIN_STABILIZE_MS    (100U) /**< CH1 水泵电源吸合后稳压（ms） */
 #define RAMP_DOWN_MS         (500U) /**< PWM 线性降至 0 的时长（ms） */
-#define CLOSE_MAIN_RELAX_MS  (500U) /**< 关 CH5 后卸压等待（ms） */
+#define CLOSE_MAIN_RELAX_MS  (500U) /**< 关 CH1 水泵电源后卸压（ms） */
 #define CLOSE_VALVE_MS       (50U)  /**< 关分阀后进入 GAP 前的等待（ms） */
 
 /**
@@ -49,7 +49,7 @@ static void Set_State(App_Pump_FsmCtx *ctx, App_Pump_FsmState st)
  */
 static Bsp_Relay_Channel Valve_Channel(Fm_ValveIndex v)
 {
-    return (Bsp_Relay_Channel)v;
+    return (Bsp_Relay_Channel)((uint32_t)BSP_RELAY_VALVE_1 + (uint32_t)v);
 }
 
 /**
@@ -87,7 +87,7 @@ void App_Pump_Fsm_Abort(App_Pump_FsmCtx *ctx, Fm_ErrorCode reason)
  */
 void App_Pump_Fsm_Pause(App_Pump_FsmCtx *ctx)
 {
-    /* 简化：暂停 = 立即 ramp_down + 关 CH5；恢复时重新进入当前阶梯
+    /* 简化：暂停 = 立即 ramp_down + 关 CH1；恢复时重新进入当前阶梯
      * V1.0 仅记录意图，正式实现留 Phase 2。
      */
     (void)ctx;
@@ -125,7 +125,7 @@ uint8_t App_Pump_Fsm_CurrentStep(const App_Pump_FsmCtx *ctx)
  * @param   ctx  上下文
  * @retval  true   仍在进行中
  * @retval  false  已 DONE 或 ERROR 终态，主 FSM 应推进到下一路
- * @note    INIT：吸合分阀 → OPEN_MAIN：吸合 CH5 → STEP：阶梯 PWM →
+ * @note    INIT：吸合分阀(CH2~5) → OPEN_MAIN：吸合 CH1 → STEP：阶梯 PWM →
  *          RAMP_DOWN → CLOSE_MAIN → CLOSE_VALVE → GAP → DONE。
  */
 bool App_Pump_Fsm_Tick(App_Pump_FsmCtx *ctx)
@@ -164,7 +164,7 @@ bool App_Pump_Fsm_Tick(App_Pump_FsmCtx *ctx)
         case APP_PUMP_FSM_STATE_OPEN_MAIN:
             if (elapsed == 0U)
             {
-                if (Bsp_Relay_Set(BSP_RELAY_MAIN_CH5, true) != FM_OK)
+                if (Bsp_Relay_Set(BSP_RELAY_PUMP_PWR_CH1, true) != FM_OK)
                 {
                     App_Pump_Fsm_Abort(ctx, FM_ERR_012_INTERLOCK);
                     return false;
@@ -225,8 +225,8 @@ bool App_Pump_Fsm_Tick(App_Pump_FsmCtx *ctx)
         case APP_PUMP_FSM_STATE_CLOSE_MAIN:
             if (elapsed == 0U)
             {
-                /* 释放 CH5：因为分阀仍开着，互锁允许 */
-                (void)Bsp_Relay_Set(BSP_RELAY_MAIN_CH5, false);
+                /* 释放 CH1：分阀仍开着，互锁允许 */
+                (void)Bsp_Relay_Set(BSP_RELAY_PUMP_PWR_CH1, false);
             }
             if (elapsed >= CLOSE_MAIN_RELAX_MS)
             {
@@ -238,7 +238,7 @@ bool App_Pump_Fsm_Tick(App_Pump_FsmCtx *ctx)
             if (elapsed == 0U)
             {
                 Bsp_Relay_Channel ch = Valve_Channel(ctx->valve);
-                /* 此时 CH5=OFF，互锁允许关阀 */
+                /* 此时 CH1=OFF，互锁允许关阀 */
                 (void)Bsp_Relay_Set(ch, false);
             }
             if (elapsed >= CLOSE_VALVE_MS)

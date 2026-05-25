@@ -4,7 +4,7 @@
  * @Date         : 2026-05-15 11:30:00
  * @LastEditors  : tonymeng0910@gmail.com
  * @LastEditTime : 2026-05-15 14:50:00
- * @Description  : 4 按键扫描接口（K1=PA1, K2=PA2, K3=PA3, K4=PA4）
+ * @Description  : 4 路独立按键模块（K1~K4=PA1~PA4，按下输出低电平）
  *
  * Copyright (c) 2026 by tony.meng, All Rights Reserved.
  *
@@ -27,10 +27,10 @@
  */
 typedef enum
 {
-    BSP_KEY_K1 = 0, /**< PA1：UP / 菜单上               */
-    BSP_KEY_K2,     /**< PA2：DOWN / 菜单下             */
-    BSP_KEY_K3,     /**< PA3：OK / 进入菜单 / 确认       */
-    BSP_KEY_K4,     /**< PA4：BACK / STOP / 返回         */
+    BSP_KEY_K1 = 0, /**< PA1：向下移动 / 增加数值         */
+    BSP_KEY_K2,     /**< PA2：向上移动 / 减少数值         */
+    BSP_KEY_K3,     /**< PA3：确定 / 进入                 */
+    BSP_KEY_K4,     /**< PA4：退出 / 返回                 */
     BSP_KEY_NUM
 } Bsp_Key_Id;
 

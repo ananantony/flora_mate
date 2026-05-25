@@ -32,6 +32,10 @@
 #include "app_menu.h"
 #include "app_display.h"
 #include "app_main_fsm.h"
+#include "app_manual_key.h"
+#include "app_manual_select.h"
+#include "app_serial_debug.h"
+#include "app_serial_debug_config.h"
 
 #include "floramate_types.h"
 
@@ -90,7 +94,13 @@ void App_Init(void)
     /* 6) 应用层 */
     App_Menu_Init();
     App_Display_Init();
+    App_ManualSelect_Init();
+    App_ManualKey_Init();
     App_Main_Fsm_Init();
+    App_SerialDebug_Init();
+#if APP_SERIAL_DEBUG_AUTO_ENTER_ON_BOOT
+    App_SerialDebug_SetActive(true);
+#endif
 
     LOG_INFO_WITH_ARG("init done. eeprom=%d oled=%d", (int)Bsp_Eeprom_IsOnline(), (int)Bsp_Oled_IsOnline());
 }
@@ -116,16 +126,20 @@ void App_Loop(void)
     {
         App_Log_Tick();
         Bsp_Usart_Log_TxFlush();
+        App_SerialDebug_Tick();
 
-        Bsp_Key_Scan();
-
-        for (uint32_t i = 0U; i < 4U; i++)
+        if (App_Main_Fsm_KeyInputEnabled())
         {
-            if (!App_Event_Pop(&evt))
+            Bsp_Key_Scan();
+
+            for (uint32_t i = 0U; i < 4U; i++)
             {
-                break;
+                if (!App_Event_Pop(&evt))
+                {
+                    break;
+                }
+                App_Main_Fsm_OnEvent(&evt);
             }
-            App_Main_Fsm_OnEvent(&evt);
         }
 
         App_Main_Fsm_Tick();

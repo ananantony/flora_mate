@@ -42,8 +42,8 @@ typedef enum
 
     FM_ERR_010_CH_TIMEOUT    = 0x10, /**< 单路浇灌超时                        */
     FM_ERR_011_TOTAL_TIMEOUT = 0x11, /**< 总任务超时                          */
-    FM_ERR_012_INTERLOCK     = 0x12, /**< CH5 互锁失败（无阀开就吸 CH5）       */
-    FM_ERR_013_PUMP_NO_POWER = 0x13, /**< CH5=OFF 时被要求设 PWM              */
+    FM_ERR_012_INTERLOCK     = 0x12, /**< 互锁失败（无阀开就吸水泵总电源 CH1） */
+    FM_ERR_013_PUMP_NO_POWER = 0x13, /**< CH1 水泵电源 OFF 时被要求设 PWM       */
 
     FM_ERR_020_WATCHDOG      = 0x20, /**< 看门狗复位（V1.0 预留，未启用）      */
 
@@ -52,7 +52,7 @@ typedef enum
 
 /**
  * @brief   4 路水阀通道索引
- * @note    与 Bsp_Relay_Channel 中的 BSP_RELAY_VALVE_1..4 一一对应，
+ * @note    与 Bsp_Relay_Channel 中的 BSP_RELAY_VALVE_1..4（模块 CH2~CH5）一一对应，
  *          可直接 (Bsp_Relay_Channel)Fm_ValveIndex 互转。
  */
 typedef enum

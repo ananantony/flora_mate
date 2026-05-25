@@ -4,7 +4,7 @@
  * @Date         : 2026-05-15 11:30:00
  * @LastEditors  : tonymeng0910@gmail.com
  * @LastEditTime : 2026-05-15 14:50:00
- * @Description  : 水泵 PWM (TIM2_CH1/PA0) 安全封装实现，含 CH5 互锁与非阻塞 ramp-down
+ * @Description  : 水泵 PWM (TIM2_CH1/PA0) 安全封装，含 CH1 水泵电源互锁与 ramp-down
  *
  * Copyright (c) 2026 by tony.meng, All Rights Reserved.
  *
@@ -49,7 +49,7 @@ static void Bsp_Pump_Pwm_WriteCcr(uint8_t duty_percent)
 
 /**
  * @brief   PWM 初始化（首次启动 TIM2_CH1 输出）
- * @note    Init 后占空比立即为 0，CH5=OFF，水泵无水流。
+ * @note    Init 后占空比立即为 0，CH1=OFF，水泵无水流。
  */
 void Bsp_Pump_Pwm_Init(void)
 {
@@ -67,7 +67,7 @@ void Bsp_Pump_Pwm_Init(void)
  * @brief   设置 PWM 占空比
  * @param   duty_percent  目标百分比 [0..95]
  * @retval  FM_OK / FM_ERR_013_PUMP_NO_POWER
- * @note    0% 永远允许（停泵）；非 0% 要求 CH5 已吸合。
+ * @note    0% 永远允许（停泵）；非 0% 要求 CH1 水泵总电源已吸合。
  *          任何成功 Set 都会取消正在进行的 ramp-down。
  */
 Fm_ErrorCode Bsp_Pump_Pwm_SetDutyPercent(uint8_t duty_percent)
@@ -78,7 +78,7 @@ Fm_ErrorCode Bsp_Pump_Pwm_SetDutyPercent(uint8_t duty_percent)
         Bsp_Pump_Pwm_WriteCcr(0U);
         return FM_OK;
     }
-    if (!Bsp_Relay_Get(BSP_RELAY_MAIN_CH5))
+    if (!Bsp_Relay_Get(BSP_RELAY_PUMP_PWR_CH1))
     {
         return FM_ERR_013_PUMP_NO_POWER;
     }

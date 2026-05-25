@@ -33,10 +33,10 @@ typedef enum
 {
     APP_PUMP_FSM_STATE_IDLE = 0,    /**< 未运行                              */
     APP_PUMP_FSM_STATE_INIT,        /**< 吸合 CHx 阀 → 等机械到位            */
-    APP_PUMP_FSM_STATE_OPEN_MAIN,   /**< 吸合 CH5 → 等稳压                    */
+    APP_PUMP_FSM_STATE_OPEN_MAIN,   /**< 吸合 CH1 水泵总电源 → 等稳压          */
     APP_PUMP_FSM_STATE_STEP,        /**< 阶梯执行（内部维护 step_idx）        */
     APP_PUMP_FSM_STATE_RAMP_DOWN,   /**< PWM 线性降到 0                       */
-    APP_PUMP_FSM_STATE_CLOSE_MAIN,  /**< 释放 CH5 → 卸压                      */
+    APP_PUMP_FSM_STATE_CLOSE_MAIN,  /**< 释放 CH1 水泵总电源 → 卸压            */
     APP_PUMP_FSM_STATE_CLOSE_VALVE, /**< 释放 CHx 阀                          */
     APP_PUMP_FSM_STATE_GAP,         /**< 路间静默                              */
     APP_PUMP_FSM_STATE_DONE,        /**< 本路完成                              */

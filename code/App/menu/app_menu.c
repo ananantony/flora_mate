@@ -18,6 +18,7 @@
  */
 #include "app_menu.h"
 #include "app_config.h"
+#include "app_display.h"
 #include "app_log.h"
 #include "bsp_relay.h"
 #include "bsp_pump_pwm.h"
@@ -41,8 +42,8 @@ static const char *s_param_names[] = {"n_steps", "ch_en",   "idle",     "gap_ms"
 #define PARAM_NAMES_COUNT (sizeof(s_param_names) / sizeof(s_param_names[0]))
 
 /** @brief 手动测试页条目 */
-static const char *s_manual_items[] = {"Z1 ON/OFF",  "Z2 ON/OFF",     "Z3 ON/OFF", "Z4 ON/OFF",
-                                       "CH5 ON/OFF", "Pump duty +/-", "Back"};
+static const char *s_manual_items[] = {"V1 ON/OFF",  "V2 ON/OFF",     "V3 ON/OFF", "V4 ON/OFF",
+                                       "Pump PWR",   "PWM duty +/-",  "Back"};
 #define MANUAL_ITEMS_COUNT (sizeof(s_manual_items) / sizeof(s_manual_items[0]))
 
 /* ========================================== 内部上下文 ========================================== */
@@ -210,6 +211,7 @@ static void Cursor_Up(void)
     if (n == 0U)
         return;
     s_ctx.cursor = (uint8_t)((s_ctx.cursor + n - 1U) % n);
+    App_Display_MarkDirty();
 }
 
 /**
@@ -221,6 +223,7 @@ static void Cursor_Down(void)
     if (n == 0U)
         return;
     s_ctx.cursor = (uint8_t)((s_ctx.cursor + 1U) % n);
+    App_Display_MarkDirty();
 }
 
 /**
@@ -232,6 +235,8 @@ static void Go_Page(App_Menu_Page p)
     s_ctx.page          = p;
     s_ctx.cursor        = 0U;
     s_ctx.page_enter_ms = Bsp_Tick_GetMs();
+    App_Display_MarkDirty();
+    App_Display_FlushNow();
 }
 
 /**
@@ -297,27 +302,24 @@ static void Commit_Edit(void)
 /* ========================================== 内部辅助：手动测试 ========================================== */
 
 /**
- * @brief   切换指定 Zone 电磁阀（Z1~Z4 对应 cursor 0~3）
+ * @brief   切换 Zone 电磁阀（Z1~Z4 → 继电器 CH2~CH5）
  * @param   z  Zone 索引 0..3
  */
 static void Manual_Toggle_Valve(uint8_t z)
 {
     if (z >= FM_CHANNEL_NUM)
         return;
-    Bsp_Relay_Channel ch  = (Bsp_Relay_Channel)z;
+    Bsp_Relay_Channel ch  = (Bsp_Relay_Channel)((uint32_t)BSP_RELAY_VALVE_1 + (uint32_t)z);
     bool              now = Bsp_Relay_Get(ch);
     Fm_ErrorCode      err = Bsp_Relay_Set(ch, !now);
-    LOG_INFO_WITH_ARG("manual: Z%u -> %s (err=0x%02X)", (unsigned)(z + 1U), now ? "OFF" : "ON", (unsigned)err);
+    LOG_INFO_WITH_ARG("manual: V%u -> %s (err=0x%02X)", (unsigned)(z + 1U), now ? "OFF" : "ON", (unsigned)err);
 }
 
-/**
- * @brief   切换 CH5 总阀状态
- */
-static void Manual_Toggle_Main(void)
+static void Manual_Toggle_PumpPwr(void)
 {
-    bool         now = Bsp_Relay_Get(BSP_RELAY_MAIN_CH5);
-    Fm_ErrorCode err = Bsp_Relay_Set(BSP_RELAY_MAIN_CH5, !now);
-    LOG_INFO_WITH_ARG("manual: CH5 -> %s (err=0x%02X)", now ? "OFF" : "ON", (unsigned)err);
+    bool         now = Bsp_Relay_Get(BSP_RELAY_PUMP_PWR_CH1);
+    Fm_ErrorCode err = Bsp_Relay_Set(BSP_RELAY_PUMP_PWR_CH1, !now);
+    LOG_INFO_WITH_ARG("manual: PumpPWR -> %s (err=0x%02X)", now ? "OFF" : "ON", (unsigned)err);
 }
 
 /**
@@ -351,7 +353,7 @@ static void Cleanup_Outputs(void)
 /**
  * @brief   菜单按键/事件处理（由主 FSM 转发）
  * @param   e  应用事件；NULL 忽略
- * @note    各页 K1/K2 移光标；K3/K4 确认/返回/保存等见各 case 注释
+ * @note    统一按键：K1 下移/加 K2 上移/减 K3 确定 K4 退出
  */
 void App_Menu_OnEvent(const App_Event *e)
 {
@@ -365,19 +367,13 @@ void App_Menu_OnEvent(const App_Event *e)
             switch (e->id)
             {
                 case APP_EVENT_KEY_K1_SHORT:
-                    Cursor_Up();
-                    break;
-                case APP_EVENT_KEY_K2_SHORT:
                     Cursor_Down();
                     break;
-                case APP_EVENT_KEY_K3_LONG:
-                    /* 退出菜单 = SLEEP */
-                    Cleanup_Outputs();
-                    s_ctx.exit_request = true;
-                    s_ctx.exit_action  = APP_MENU_ACTION_GOTO_SLEEP;
+                case APP_EVENT_KEY_K2_SHORT:
+                    Cursor_Up();
                     break;
-                case APP_EVENT_KEY_K4_SHORT:
-                    /* 进入子页 */
+                case APP_EVENT_KEY_K3_SHORT:
+                    /* 确定：进入子页或开始浇水 */
                     switch (s_ctx.cursor)
                     {
                         case 0: /* Start Water */
@@ -406,6 +402,11 @@ void App_Menu_OnEvent(const App_Event *e)
                             break;
                     }
                     break;
+                case APP_EVENT_KEY_K4_SHORT:
+                    Cleanup_Outputs();
+                    s_ctx.exit_request = true;
+                    s_ctx.exit_action  = APP_MENU_ACTION_GOTO_SLEEP;
+                    break;
                 default:
                     break;
             }
@@ -415,16 +416,16 @@ void App_Menu_OnEvent(const App_Event *e)
             switch (e->id)
             {
                 case APP_EVENT_KEY_K1_SHORT:
-                    Cursor_Up();
-                    break;
-                case APP_EVENT_KEY_K2_SHORT:
                     Cursor_Down();
                     break;
+                case APP_EVENT_KEY_K2_SHORT:
+                    Cursor_Up();
+                    break;
                 case APP_EVENT_KEY_K3_SHORT:
-                    Go_Page(APP_MENU_PAGE_MAIN);
+                    Enter_Edit_For_Cursor();
                     break;
                 case APP_EVENT_KEY_K4_SHORT:
-                    Enter_Edit_For_Cursor();
+                    Go_Page(APP_MENU_PAGE_MAIN);
                     break;
                 case APP_EVENT_KEY_K3_LONG:
                 {
@@ -451,10 +452,10 @@ void App_Menu_OnEvent(const App_Event *e)
                     s_ctx.edit_value -= step;
                     break;
                 case APP_EVENT_KEY_K3_SHORT:
-                    Go_Page(APP_MENU_PAGE_PARAMS);
-                    break; /* 取消 */
-                case APP_EVENT_KEY_K4_SHORT:
                     Commit_Edit();
+                    break;
+                case APP_EVENT_KEY_K4_SHORT:
+                    Go_Page(APP_MENU_PAGE_PARAMS);
                     break;
                 default:
                     break;
@@ -466,27 +467,33 @@ void App_Menu_OnEvent(const App_Event *e)
             switch (e->id)
             {
                 case APP_EVENT_KEY_K1_SHORT:
-                    Cursor_Up();
+                    if (s_ctx.cursor == 5U)
+                    {
+                        Manual_Adjust_Pump(+5);
+                    }
+                    else
+                    {
+                        Cursor_Down();
+                    }
                     break;
                 case APP_EVENT_KEY_K2_SHORT:
-                    Cursor_Down();
+                    if (s_ctx.cursor == 5U)
+                    {
+                        Manual_Adjust_Pump(-5);
+                    }
+                    else
+                    {
+                        Cursor_Up();
+                    }
                     break;
                 case APP_EVENT_KEY_K3_SHORT:
-                    Cleanup_Outputs();
-                    Go_Page(APP_MENU_PAGE_MAIN);
-                    break;
-                case APP_EVENT_KEY_K4_SHORT:
                     if (s_ctx.cursor < 4U)
                     {
                         Manual_Toggle_Valve(s_ctx.cursor);
                     }
                     else if (s_ctx.cursor == 4U)
                     {
-                        Manual_Toggle_Main();
-                    }
-                    else if (s_ctx.cursor == 5U)
-                    {
-                        Manual_Adjust_Pump(+10); /* 短按 K4 = +10% */
+                        Manual_Toggle_PumpPwr();
                     }
                     else
                     {
@@ -494,13 +501,9 @@ void App_Menu_OnEvent(const App_Event *e)
                         Go_Page(APP_MENU_PAGE_MAIN);
                     }
                     break;
-                case APP_EVENT_KEY_K1_LONG:
-                    if (s_ctx.cursor == 5U)
-                        Manual_Adjust_Pump(+5);
-                    break;
-                case APP_EVENT_KEY_K2_LONG:
-                    if (s_ctx.cursor == 5U)
-                        Manual_Adjust_Pump(-5);
+                case APP_EVENT_KEY_K4_SHORT:
+                    Cleanup_Outputs();
+                    Go_Page(APP_MENU_PAGE_MAIN);
                     break;
                 default:
                     break;
@@ -508,21 +511,20 @@ void App_Menu_OnEvent(const App_Event *e)
             break;
 
         case APP_MENU_PAGE_INFO:
-            if ((e->id == APP_EVENT_KEY_K3_SHORT) || (e->id == APP_EVENT_KEY_K4_SHORT))
+            if (e->id == APP_EVENT_KEY_K4_SHORT)
             {
                 Go_Page(APP_MENU_PAGE_MAIN);
             }
             break;
 
         case APP_MENU_PAGE_FACTORY_RESET:
-            /* 长按 K4 3s 确认出厂复位 */
-            if (e->id == APP_EVENT_KEY_K4_HOLD)
+            if (e->id == APP_EVENT_KEY_K3_HOLD)
             {
                 LOG_WARN("menu: factory reset confirmed");
                 (void)App_Config_FactoryReset();
                 Go_Page(APP_MENU_PAGE_MAIN);
             }
-            else if (e->id == APP_EVENT_KEY_K3_SHORT)
+            else if (e->id == APP_EVENT_KEY_K4_SHORT)
             {
                 Go_Page(APP_MENU_PAGE_MAIN);
             }
