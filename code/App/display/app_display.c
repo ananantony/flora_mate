@@ -1,4 +1,4 @@
-/*
+﻿/*
  * @File         : \code\App\display\app_display.c
  * @Author       : tonymeng
  * @Date         : 2026-05-15 11:30:00
@@ -27,7 +27,7 @@
 #include "app_serial_debug.h"
 #include "app_serial_debug_config.h"
 #include "bsp_key.h"
-#include "bsp_relay.h"
+#include "bsp_valve.h"
 #include "bsp_oled.h"
 #include "bsp_pump_pwm.h"
 #include "bsp_tick.h"
@@ -459,9 +459,9 @@ static void Draw_SerialDebug(void)
     snprintf(s_line, sizeof(s_line), "Pwm:%u%% R:", (unsigned)Bsp_Pump_Pwm_GetDutyPercent());
     Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(2U), s_line, false);
     snprintf(s_line, sizeof(s_line), "P%uv%u%u%u%u r%u",
-             Bsp_Relay_Get(BSP_RELAY_PUMP_PWR_CH1) ? 1U : 0U, Bsp_Relay_Get(BSP_RELAY_VALVE_1) ? 1U : 0U,
-             Bsp_Relay_Get(BSP_RELAY_VALVE_2) ? 1U : 0U, Bsp_Relay_Get(BSP_RELAY_VALVE_3) ? 1U : 0U,
-             Bsp_Relay_Get(BSP_RELAY_VALVE_4) ? 1U : 0U, Bsp_Relay_Get(BSP_RELAY_RSV_CH6) ? 1U : 0U);
+             Bsp_Valve_Get(BSP_VALVE_PUMP_EN) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_Z1) ? 1U : 0U,
+             Bsp_Valve_Get(BSP_VALVE_Z2) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_Z3) ? 1U : 0U,
+             Bsp_Valve_Get(BSP_VALVE_Z4) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_RSV) ? 1U : 0U);
     Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(3U), s_line, false);
     Draw_ScreenEndEx("K4L 2s: exit debug");
 }

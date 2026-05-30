@@ -1,4 +1,4 @@
-/*
+﻿/*
  * @File         : \code\App\init\app_init.c
  * @Author       : tonymeng
  * @Date         : 2026-05-15 11:30:00
@@ -20,7 +20,7 @@
 
 #include "bsp_tick.h"
 #include "bsp_usart_log.h"
-#include "bsp_relay.h"
+#include "bsp_valve.h"
 #include "bsp_pump_pwm.h"
 #include "bsp_key.h"
 #include "bsp_eeprom.h"
@@ -78,7 +78,7 @@ void App_Init(void)
     LOG_INFO_WITH_ARG("Build: %s", FM_BUILD_DATE_STR);
 
     /* 3) 输出层 Fail-Safe */
-    Bsp_Relay_Init();
+    Bsp_Valve_Init();
     Bsp_Pump_Pwm_Init();
 
     /* 4) 存储 + 配置 */

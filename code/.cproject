@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+﻿<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <?fileVersion 4.0.0?><cproject storage_type_id="org.eclipse.cdt.core.XmlProjectDescriptionStorage">
 	<storageModule moduleId="org.eclipse.cdt.core.settings">
 		<cconfiguration id="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.305596154">
@@ -59,7 +59,7 @@
 									<listOptionValue builtIn="false" value="../Bsp/key"/>
 									<listOptionValue builtIn="false" value="../Bsp/oled"/>
 									<listOptionValue builtIn="false" value="../Bsp/pump_pwm"/>
-									<listOptionValue builtIn="false" value="../Bsp/relay"/>
+									<listOptionValue builtIn="false" value="../Bsp/valve"/>
 									<listOptionValue builtIn="false" value="../Bsp/tick"/>
 									<listOptionValue builtIn="false" value="../Bsp/usart"/>
 									<listOptionValue builtIn="false" value="../Common/crc16"/>
@@ -159,7 +159,7 @@
 									<listOptionValue builtIn="false" value="../Bsp/key"/>
 									<listOptionValue builtIn="false" value="../Bsp/oled"/>
 									<listOptionValue builtIn="false" value="../Bsp/pump_pwm"/>
-									<listOptionValue builtIn="false" value="../Bsp/relay"/>
+									<listOptionValue builtIn="false" value="../Bsp/valve"/>
 									<listOptionValue builtIn="false" value="../Bsp/tick"/>
 									<listOptionValue builtIn="false" value="../Bsp/usart"/>
 									<listOptionValue builtIn="false" value="../Common/crc16"/>

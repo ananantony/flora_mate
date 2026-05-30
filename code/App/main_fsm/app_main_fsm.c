@@ -1,4 +1,4 @@
-/*
+﻿/*
  * @File         : \code\App\main_fsm\app_main_fsm.c
  * @Author       : tonymeng
  * @Date         : 2026-05-15 11:30:00
@@ -28,7 +28,7 @@
 #include "app_serial_debug.h"
 #include "app_serial_debug_config.h"
 #include "bsp_key.h"
-#include "bsp_relay.h"
+#include "bsp_valve.h"
 #include "bsp_pump_pwm.h"
 #include "bsp_tick.h"
 #include "bsp_eeprom.h"
@@ -65,9 +65,9 @@ static App_Main_Fsm_Ctx s_ctx;
 static void All_Outputs_Off_Debug(void)
 {
     Bsp_Pump_Pwm_Stop();
-    for (uint32_t i = 0U; i < (uint32_t)BSP_RELAY_CHANNEL_NUM; i++)
+    for (uint32_t i = 0U; i < (uint32_t)BSP_VALVE_CHANNEL_NUM; i++)
     {
-        Bsp_Relay_DebugSet((Bsp_Relay_Channel)i, false);
+        Bsp_Valve_DebugSet((Bsp_Valve_Channel)i, false);
     }
 }
 
@@ -146,7 +146,7 @@ void App_Main_Fsm_SignalError(Fm_ErrorCode err)
 {
     s_ctx.last_err = err;
     Bsp_Pump_Pwm_Stop();
-    Bsp_Relay_MainOffForce();
+    Bsp_Valve_ForceAllOff();
     Set_State(APP_MAIN_FSM_STATE_ERROR);
 }
 
@@ -464,7 +464,7 @@ void App_Main_Fsm_Tick(void)
             {
                 Set_State(APP_MAIN_FSM_STATE_SELFTEST);
                 LOG_INFO_WITH_ARG("selftest: relay click test, pulse=%ums", cfg->selftest_pulse_ms);
-                Bsp_Relay_Selftest((uint16_t)cfg->selftest_pulse_ms);
+                Bsp_Valve_Selftest((uint16_t)cfg->selftest_pulse_ms);
                 LOG_INFO_WITH_ARG("selftest: done; eeprom=%s, oled=%s", Bsp_Eeprom_IsOnline() ? "OK" : "OFFLINE",
                                   Bsp_Oled_IsOnline() ? "OK" : "OFFLINE");
             }

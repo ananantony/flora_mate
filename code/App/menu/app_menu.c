@@ -1,4 +1,4 @@
-/*
+﻿/*
  * @File         : \code\App\menu\app_menu.c
  * @Author       : tonymeng
  * @Date         : 2026-05-15 11:30:00
@@ -20,7 +20,7 @@
 #include "app_config.h"
 #include "app_display.h"
 #include "app_log.h"
-#include "bsp_relay.h"
+#include "bsp_valve.h"
 #include "bsp_pump_pwm.h"
 #include "bsp_key.h"
 #include "bsp_tick.h"
@@ -309,16 +309,16 @@ static void Manual_Toggle_Valve(uint8_t z)
 {
     if (z >= FM_CHANNEL_NUM)
         return;
-    Bsp_Relay_Channel ch  = (Bsp_Relay_Channel)((uint32_t)BSP_RELAY_VALVE_1 + (uint32_t)z);
-    bool              now = Bsp_Relay_Get(ch);
-    Fm_ErrorCode      err = Bsp_Relay_Set(ch, !now);
+    Bsp_Valve_Channel ch  = (Bsp_Valve_Channel)((uint32_t)BSP_VALVE_Z1 + (uint32_t)z);
+    bool              now = Bsp_Valve_Get(ch);
+    Fm_ErrorCode      err = Bsp_Valve_Set(ch, !now);
     LOG_INFO_WITH_ARG("manual: V%u -> %s (err=0x%02X)", (unsigned)(z + 1U), now ? "OFF" : "ON", (unsigned)err);
 }
 
 static void Manual_Toggle_PumpPwr(void)
 {
-    bool         now = Bsp_Relay_Get(BSP_RELAY_PUMP_PWR_CH1);
-    Fm_ErrorCode err = Bsp_Relay_Set(BSP_RELAY_PUMP_PWR_CH1, !now);
+    bool         now = Bsp_Valve_Get(BSP_VALVE_PUMP_EN);
+    Fm_ErrorCode err = Bsp_Valve_Set(BSP_VALVE_PUMP_EN, !now);
     LOG_INFO_WITH_ARG("manual: PumpPWR -> %s (err=0x%02X)", now ? "OFF" : "ON", (unsigned)err);
 }
 
@@ -344,7 +344,7 @@ static void Manual_Adjust_Pump(int8_t delta)
 static void Cleanup_Outputs(void)
 {
     Bsp_Pump_Pwm_Stop();
-    Bsp_Relay_AllOff();
+    Bsp_Valve_AllOff();
     s_ctx.manual_pump_duty = 0U;
 }
 

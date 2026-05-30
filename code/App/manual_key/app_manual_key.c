@@ -1,4 +1,4 @@
-/*
+﻿/*
  * @File         : \code\App\manual_key\app_manual_key.c
  * @Description  : 手动按键控制：CH1 水泵电源 / CH2~CH5 阀 / CH6 备用 / PWM
  */
@@ -7,7 +7,7 @@
 #include "app_display.h"
 #include "app_log.h"
 #include "bsp_pump_pwm.h"
-#include "bsp_relay.h"
+#include "bsp_valve.h"
 #include "floramate_types.h"
 
 #include <string.h>
@@ -24,33 +24,33 @@ typedef struct
 
 static App_ManualKey_Ctx s_ctx;
 
-static Bsp_Relay_Channel Relay_For_Cursor(uint8_t cur)
+static Bsp_Valve_Channel Relay_For_Cursor(uint8_t cur)
 {
     switch (cur)
     {
         case 0U:
-            return BSP_RELAY_PUMP_PWR_CH1;
+            return BSP_VALVE_PUMP_EN;
         case 1U:
-            return BSP_RELAY_VALVE_1;
+            return BSP_VALVE_Z1;
         case 2U:
-            return BSP_RELAY_VALVE_2;
+            return BSP_VALVE_Z2;
         case 3U:
-            return BSP_RELAY_VALVE_3;
+            return BSP_VALVE_Z3;
         case 4U:
-            return BSP_RELAY_VALVE_4;
+            return BSP_VALVE_Z4;
         case 5U:
-            return BSP_RELAY_RSV_CH6;
+            return BSP_VALVE_RSV;
         default:
-            return BSP_RELAY_RSV_CH6;
+            return BSP_VALVE_RSV;
     }
 }
 
 static void All_Outputs_Off(void)
 {
     Bsp_Pump_Pwm_Stop();
-    for (uint32_t i = 0U; i < (uint32_t)BSP_RELAY_CHANNEL_NUM; i++)
+    for (uint32_t i = 0U; i < (uint32_t)BSP_VALVE_CHANNEL_NUM; i++)
     {
-        Bsp_Relay_DebugSet((Bsp_Relay_Channel)i, false);
+        Bsp_Valve_DebugSet((Bsp_Valve_Channel)i, false);
     }
     s_ctx.pump_duty = 0U;
 }
@@ -58,7 +58,7 @@ static void All_Outputs_Off(void)
 static void Pump_Off(void)
 {
     Bsp_Pump_Pwm_Stop();
-    Bsp_Relay_DebugSet(BSP_RELAY_PUMP_PWR_CH1, false);
+    Bsp_Valve_DebugSet(BSP_VALVE_PUMP_EN, false);
     s_ctx.pump_duty = 0U;
     App_Display_MarkDirty();
 }
@@ -112,7 +112,7 @@ bool App_ManualKey_IsRelayOn(uint8_t idx)
     {
         return false;
     }
-    return Bsp_Relay_Get(Relay_For_Cursor(idx));
+    return Bsp_Valve_Get(Relay_For_Cursor(idx));
 }
 
 bool App_ManualKey_ExitToBootWaitRequested(void)
@@ -131,8 +131,8 @@ static void Set_Relay_Cursor(bool on)
     {
         return;
     }
-    Bsp_Relay_Channel ch  = Relay_For_Cursor(s_ctx.cursor);
-    Bsp_Relay_DebugSet(ch, on);
+    Bsp_Valve_Channel ch  = Relay_For_Cursor(s_ctx.cursor);
+    Bsp_Valve_DebugSet(ch, on);
     LOG_INFO_WITH_ARG("manual key: ch%u -> %u", (unsigned)(s_ctx.cursor + 1U), on ? 1U : 0U);
     App_Display_MarkDirty();
 }
@@ -173,9 +173,9 @@ static void Adjust_Pump(int8_t delta)
     }
     else
     {
-        if (!Bsp_Relay_Get(BSP_RELAY_PUMP_PWR_CH1))
+        if (!Bsp_Valve_Get(BSP_VALVE_PUMP_EN))
         {
-            Bsp_Relay_DebugSet(BSP_RELAY_PUMP_PWR_CH1, true);
+            Bsp_Valve_DebugSet(BSP_VALVE_PUMP_EN, true);
         }
         (void)Bsp_Pump_Pwm_SetDutyPercent(s_ctx.pump_duty);
     }

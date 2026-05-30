@@ -1,4 +1,4 @@
-/*
+﻿﻿/*
  * @File         : \code\App\serial_debug\app_serial_debug.c
  * @Description  : USART1 串口调试命令解析
  */
@@ -10,7 +10,7 @@
 #include "app_main_fsm.h"
 #include "bsp_key.h"
 #include "bsp_pump_pwm.h"
-#include "bsp_relay.h"
+#include "bsp_valve.h"
 #include "bsp_tick.h"
 #include "bsp_usart_log.h"
 #include "floramate_types.h"
@@ -125,15 +125,15 @@ static bool Parse_U8_0_100(const char *s, uint8_t *out)
 }
 
 /** 用户区号 1~6 → 模块 CH1~CH6：1=水泵总电源，2~5=阀，6=备用 */
-static bool Parse_Relay_User_1_6(const char *s, Bsp_Relay_Channel *out, uint8_t *out_user_ch)
+static bool Parse_Relay_User_1_6(const char *s, Bsp_Valve_Channel *out, uint8_t *out_user_ch)
 {
-    static const Bsp_Relay_Channel s_map[6] = {
-        BSP_RELAY_PUMP_PWR_CH1,
-        BSP_RELAY_VALVE_1,
-        BSP_RELAY_VALVE_2,
-        BSP_RELAY_VALVE_3,
-        BSP_RELAY_VALVE_4,
-        BSP_RELAY_RSV_CH6,
+    static const Bsp_Valve_Channel s_map[6] = {
+        BSP_VALVE_PUMP_EN,
+        BSP_VALVE_Z1,
+        BSP_VALVE_Z2,
+        BSP_VALVE_Z3,
+        BSP_VALVE_Z4,
+        BSP_VALVE_RSV,
     };
     char *end = NULL;
     long  v   = strtol(s, &end, 10);
@@ -152,14 +152,14 @@ static bool Parse_Relay_User_1_6(const char *s, Bsp_Relay_Channel *out, uint8_t 
 static void Print_Relay_State(const char *tag)
 {
     Uart_Printf("[I] %s sw ch1=%u v2=%u v3=%u v4=%u v5=%u ch6=%u\r\n", tag,
-                Bsp_Relay_Get(BSP_RELAY_PUMP_PWR_CH1) ? 1U : 0U, Bsp_Relay_Get(BSP_RELAY_VALVE_1) ? 1U : 0U,
-                Bsp_Relay_Get(BSP_RELAY_VALVE_2) ? 1U : 0U, Bsp_Relay_Get(BSP_RELAY_VALVE_3) ? 1U : 0U,
-                Bsp_Relay_Get(BSP_RELAY_VALVE_4) ? 1U : 0U, Bsp_Relay_Get(BSP_RELAY_RSV_CH6) ? 1U : 0U);
+                Bsp_Valve_Get(BSP_VALVE_PUMP_EN) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_Z1) ? 1U : 0U,
+                Bsp_Valve_Get(BSP_VALVE_Z2) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_Z3) ? 1U : 0U,
+                Bsp_Valve_Get(BSP_VALVE_Z4) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_RSV) ? 1U : 0U);
     Uart_Printf("[I] %s gpio ch1=%u v2=%u v3=%u v4=%u v5=%u ch6=%u odr=0x%04lX\r\n", tag,
-                Bsp_Relay_GetGpio(BSP_RELAY_PUMP_PWR_CH1) ? 1U : 0U, Bsp_Relay_GetGpio(BSP_RELAY_VALVE_1) ? 1U : 0U,
-                Bsp_Relay_GetGpio(BSP_RELAY_VALVE_2) ? 1U : 0U, Bsp_Relay_GetGpio(BSP_RELAY_VALVE_3) ? 1U : 0U,
-                Bsp_Relay_GetGpio(BSP_RELAY_VALVE_4) ? 1U : 0U, Bsp_Relay_GetGpio(BSP_RELAY_RSV_CH6) ? 1U : 0U,
-                (unsigned long)Bsp_Relay_GetGpioPortOdrMask());
+                Bsp_Valve_GetGpio(BSP_VALVE_PUMP_EN) ? 1U : 0U, Bsp_Valve_GetGpio(BSP_VALVE_Z1) ? 1U : 0U,
+                Bsp_Valve_GetGpio(BSP_VALVE_Z2) ? 1U : 0U, Bsp_Valve_GetGpio(BSP_VALVE_Z3) ? 1U : 0U,
+                Bsp_Valve_GetGpio(BSP_VALVE_Z4) ? 1U : 0U, Bsp_Valve_GetGpio(BSP_VALVE_RSV) ? 1U : 0U,
+                (unsigned long)Bsp_Valve_GetGpioBOdrMask());
 }
 
 static const char *Relay_User_Name(uint8_t user_ch)
@@ -338,9 +338,9 @@ static void Cmd_Status(void)
 static void Cmd_Stop(void)
 {
     Bsp_Pump_Pwm_Stop();
-    for (uint32_t i = 0U; i < (uint32_t)BSP_RELAY_CHANNEL_NUM; i++)
+    for (uint32_t i = 0U; i < (uint32_t)BSP_VALVE_CHANNEL_NUM; i++)
     {
-        Bsp_Relay_DebugSet((Bsp_Relay_Channel)i, false);
+        Bsp_Valve_DebugSet((Bsp_Valve_Channel)i, false);
     }
     Uart_Print("[I] ok: all outputs off\r\n");
     Ui_SetResult(true, "stop: all off");
@@ -352,7 +352,7 @@ static void Cmd_Pump(char *args)
     if (strcmp(args, "off") == 0)
     {
         Bsp_Pump_Pwm_Stop();
-        (void)Bsp_Relay_Set(BSP_RELAY_PUMP_PWR_CH1, false);
+        (void)Bsp_Valve_Set(BSP_VALVE_PUMP_EN, false);
         Uart_Print("[I] ok: pump off\r\n");
         Ui_SetResult(true, "pump off");
         return;
@@ -373,7 +373,7 @@ static void Cmd_Pump(char *args)
         return;
     }
 
-    Fm_ErrorCode err = Bsp_Relay_Set(BSP_RELAY_PUMP_PWR_CH1, true);
+    Fm_ErrorCode err = Bsp_Valve_Set(BSP_VALVE_PUMP_EN, true);
     if (err != FM_OK)
     {
         Uart_Print("[E] err: interlock\r\n");
@@ -396,7 +396,7 @@ static void Cmd_Valve(char *args)
     args = Trim(args);
     if (strncmp(args, "open ", 5U) == 0)
     {
-        Bsp_Relay_Channel ch;
+        Bsp_Valve_Channel ch;
         uint8_t           user_ch = 0U;
         char             *num   = Trim(args + 5);
         if (!Parse_Relay_User_1_6(num, &ch, &user_ch))
@@ -405,7 +405,7 @@ static void Cmd_Valve(char *args)
             Ui_SetResult(false, "valve: bad ch");
             return;
         }
-        Bsp_Relay_DebugSet(ch, true);
+        Bsp_Valve_DebugSet(ch, true);
         Uart_Printf("[I] ok: valve open user=%u bsp=%u (%s)\r\n", (unsigned)user_ch, (unsigned)ch,
                     Relay_User_Name(user_ch));
         Print_Relay_State("after open");
@@ -418,16 +418,16 @@ static void Cmd_Valve(char *args)
         char *which = Trim(args + 5);
         if (*which == '\0')
         {
-            for (uint32_t i = 0U; i < (uint32_t)BSP_RELAY_CHANNEL_NUM; i++)
+            for (uint32_t i = 0U; i < (uint32_t)BSP_VALVE_CHANNEL_NUM; i++)
             {
-                Bsp_Relay_DebugSet((Bsp_Relay_Channel)i, false);
+                Bsp_Valve_DebugSet((Bsp_Valve_Channel)i, false);
             }
             Uart_Print("[I] ok: all relays off\r\n");
             Ui_SetResult(true, "all relays off");
             return;
         }
 
-        Bsp_Relay_Channel ch;
+        Bsp_Valve_Channel ch;
         uint8_t           user_ch = 0U;
         if (!Parse_Relay_User_1_6(which, &ch, &user_ch))
         {
@@ -435,7 +435,7 @@ static void Cmd_Valve(char *args)
             Ui_SetResult(false, "valve: bad ch");
             return;
         }
-        Bsp_Relay_DebugSet(ch, false);
+        Bsp_Valve_DebugSet(ch, false);
         Uart_Printf("[I] ok: valve close user=%u bsp=%u (%s)\r\n", (unsigned)user_ch, (unsigned)ch,
                     Relay_User_Name(user_ch));
         Print_Relay_State("after close");
