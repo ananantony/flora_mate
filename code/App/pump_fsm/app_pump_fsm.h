@@ -5,9 +5,9 @@
  * @LastEditors  : tonymeng0910@gmail.com
  * @LastEditTime : 2026-05-27 00:00:00
  * @Description  : 单路浇灌子状态机接口（PWM 阶梯执行，固态 MOSFET 版）
- * @note         状态时序（固态版，无继电器 CH1）：
- *               阀 ON → 等稳定 → PUMP_EN ON → 等稳压 → 阶梯 PWM → ramp → PUMP_EN OFF → 阀 OFF → 静默 → DONE
- *               关键铁律：先开分阀再使能水泵；先关水泵再关阀（由互锁强制）。
+ * @note         状态时序（V3.0 固态版，无 PUMP_EN GPIO）：
+ *               阀 ON → 等稳定 → 阶梯 PWM → ramp-down → 阀 OFF → 静默 → DONE
+ *               OPEN_PUMP_EN / CLOSE_PUMP_EN 已废弃（保留枚举值以兼容显示代码）。
  *
  * Copyright (c) 2026 by tony.meng, All Rights Reserved.
  *
@@ -35,11 +35,11 @@
 typedef enum
 {
     APP_PUMP_FSM_STATE_IDLE = 0,       /**< 未运行                                   */
-    APP_PUMP_FSM_STATE_INIT,           /**< 开分阀（CHx MOS）→ 等机械到位             */
-    APP_PUMP_FSM_STATE_OPEN_PUMP_EN,   /**< 使能水泵 12V（PUMP_EN MOS） → 等稳压      */
+    APP_PUMP_FSM_STATE_INIT,           /**< 开分阀（CHx MOS）→ 等管路建压             */
+    APP_PUMP_FSM_STATE_OPEN_PUMP_EN,   /**< [已废弃] 立即直通到 STEP                  */
     APP_PUMP_FSM_STATE_STEP,           /**< 阶梯执行（内部维护 step_idx）              */
     APP_PUMP_FSM_STATE_RAMP_DOWN,      /**< PWM 线性降到 0                            */
-    APP_PUMP_FSM_STATE_CLOSE_PUMP_EN,  /**< 关断水泵 12V（PUMP_EN MOS） → 卸压        */
+    APP_PUMP_FSM_STATE_CLOSE_PUMP_EN,  /**< [已废弃] 立即直通到 CLOSE_VALVE           */
     APP_PUMP_FSM_STATE_CLOSE_VALVE,    /**< 关断分阀（CHx MOS）                       */
     APP_PUMP_FSM_STATE_GAP,            /**< 路间静默                                  */
     APP_PUMP_FSM_STATE_DONE,           /**< 本路完成                                  */

@@ -4,7 +4,7 @@
  * @Date         : 2026-05-15 11:30:00
  * @LastEditors  : tonymeng0910@gmail.com
  * @LastEditTime : 2026-05-15 14:50:00
- * @Description  : 水泵 PWM (TIM2_CH1/PA0) 安全封装，含 PUMP_EN 使能互锁与 ramp-down
+ * @Description  : 水泵 PWM (TIM2_CH1/PA0) 安全封装，含干转保护（须至少一路阀开启）与 ramp-down
  *
  * Copyright (c) 2026 by tony.meng, All Rights Reserved.
  *
@@ -33,8 +33,10 @@ static uint8_t  s_ramp_from_duty;   /**< ramp 起始占空比 */
 /**
  * @brief   写入 PWM 比较寄存器
  * @param   duty_percent  占空比百分比（> 95 自动夹到 95）
- * @note    根据 BSP_PUMP_PWM_PERIOD_TICK (1000) 将百分比换算为 0..1000 的 pulse 值。
- *          这是模块内唯一直接写 CCR 的地方，便于集中加 trace。
+ * @note    TLP281 高电平有效（PA0→510Ω→TLP281_A→K→ISO_GND），CCR 直接对应占空比：
+ *          duty 0%  → CCR = 0   → PA0 恒低 → TLP281 截止 → 泵停    ✓
+ *          duty 50% → CCR = 500 → PA0 50% 高 → 泵半速              ✓
+ *          duty 95% → CCR = 950 → PA0 95% 高 → 泵近全速            ✓
  */
 static void Bsp_Pump_Pwm_WriteCcr(uint8_t duty_percent)
 {
@@ -42,8 +44,8 @@ static void Bsp_Pump_Pwm_WriteCcr(uint8_t duty_percent)
     {
         duty_percent = BSP_PUMP_DUTY_MAX;
     }
-    uint32_t pulse = ((uint32_t)duty_percent * BSP_PUMP_PWM_PERIOD_TICK) / 100U;
-    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, pulse);
+    uint32_t ccr = ((uint32_t)duty_percent * BSP_PUMP_PWM_PERIOD_TICK) / 100U;
+    __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, ccr);
     s_current_duty_percent = duty_percent;
 }
 
@@ -67,7 +69,7 @@ void Bsp_Pump_Pwm_Init(void)
  * @brief   设置 PWM 占空比
  * @param   duty_percent  目标百分比 [0..95]
  * @retval  FM_OK / FM_ERR_013_PUMP_NO_POWER
- * @note    0% 永远允许（停泵）；非 0% 要求 PUMP_EN 已使能（水泵 12V 通路已建立）。
+ * @note    0% 永远允许（停泵）；非 0% 要求至少一路阀已开（防止干转）。
  *          任何成功 Set 都会取消正在进行的 ramp-down。
  */
 Fm_ErrorCode Bsp_Pump_Pwm_SetDutyPercent(uint8_t duty_percent)
@@ -78,7 +80,7 @@ Fm_ErrorCode Bsp_Pump_Pwm_SetDutyPercent(uint8_t duty_percent)
         Bsp_Pump_Pwm_WriteCcr(0U);
         return FM_OK;
     }
-    if (!Bsp_Valve_Get(BSP_VALVE_PUMP_EN))
+    if (!Bsp_Valve_AnyOn())
     {
         return FM_ERR_013_PUMP_NO_POWER;
     }

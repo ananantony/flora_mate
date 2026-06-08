@@ -43,7 +43,7 @@ static const char *s_param_names[] = {"n_steps", "ch_en",   "idle",     "gap_ms"
 
 /** @brief 手动测试页条目 */
 static const char *s_manual_items[] = {"V1 ON/OFF",  "V2 ON/OFF",     "V3 ON/OFF", "V4 ON/OFF",
-                                       "Pump PWR",   "PWM duty +/-",  "Back"};
+                                       "V5 ON/OFF",  "PWM duty +/-",  "Back"};
 #define MANUAL_ITEMS_COUNT (sizeof(s_manual_items) / sizeof(s_manual_items[0]))
 
 /* ========================================== 内部上下文 ========================================== */
@@ -315,11 +315,12 @@ static void Manual_Toggle_Valve(uint8_t z)
     LOG_INFO_WITH_ARG("manual: V%u -> %s (err=0x%02X)", (unsigned)(z + 1U), now ? "OFF" : "ON", (unsigned)err);
 }
 
-static void Manual_Toggle_PumpPwr(void)
+static void Manual_Toggle_Valve_Z5(void)
 {
-    bool         now = Bsp_Valve_Get(BSP_VALVE_PUMP_EN);
-    Fm_ErrorCode err = Bsp_Valve_Set(BSP_VALVE_PUMP_EN, !now);
-    LOG_INFO_WITH_ARG("manual: PumpPWR -> %s (err=0x%02X)", now ? "OFF" : "ON", (unsigned)err);
+    Bsp_Valve_Channel ch  = BSP_VALVE_Z5;
+    bool              now = Bsp_Valve_Get(ch);
+    Fm_ErrorCode      err = Bsp_Valve_Set(ch, !now);
+    LOG_INFO_WITH_ARG("manual: V5 -> %s (err=0x%02X)", now ? "OFF" : "ON", (unsigned)err);
 }
 
 /**
@@ -493,7 +494,7 @@ void App_Menu_OnEvent(const App_Event *e)
                     }
                     else if (s_ctx.cursor == 4U)
                     {
-                        Manual_Toggle_PumpPwr();
+                        Manual_Toggle_Valve_Z5();
                     }
                     else
                     {

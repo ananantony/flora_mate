@@ -122,22 +122,25 @@ Voltage Scale          : Scale 2   (F401 ≤ 84 MHz 用 Scale 2)
 
 | 引脚       | Label            | Output level | Mode      | Speed | Pull    | 说明                                  |
 | -------- | ---------------- | ------------ | --------- | ----- | ------- | ------------------------------------- |
-| **PA1**  | `VALVE_Z1`       | **Low**      | Push-Pull | Low   | No pull | 阀 Z1；Low → TLP281 截止 → Gate 上拉 12V → P-MOS 截止（失效安全）|
+| **PA1**  | `VALVE_Z1`       | **Low**      | Push-Pull | Low   | No pull | 阀 Z1；**High → TLP281 ON** → Gate 拉低 → P-MOS 导通（开阀）；**Low → 截止**（失效安全）|
 | **PA2**  | `VALVE_Z2`       | **Low**      | Push-Pull | Low   | No pull | 阀 Z2                                 |
 | **PA3**  | `VALVE_Z3`       | **Low**      | Push-Pull | Low   | No pull | 阀 Z3                                 |
 | **PA4**  | `VALVE_Z4`       | **Low**      | Push-Pull | Low   | No pull | 阀 Z4                                 |
-| **PA5**  | `VALVE_Z5`       | **Low**      | Push-Pull | Low   | No pull | 阀 Z5（备用）；与 Z1~Z4 完全等价               |
+| **PA5**  | `VALVE_Z5`       | **Low**      | Push-Pull | Low   | No pull | 阀 Z5；与 Z1~Z4 完全等价               |
 | **PC13** | `LED_HEARTBEAT`  | **High**     | Push-Pull | Low   | No pull | 板载红色 LED；低电平点亮；上电先灭，固件 500ms 翻转     |
 
 
-> **P 沟道极性铁律（V1.4）**
+> **P 沟道极性铁律（V1.5 高电平有效，实测 + 飞线修订）**
+>
+> TLP281 驱动回路：**MCU GPIO → 510Ω → TLP281_阳极 → 阴极 → ISO_GND**（GPIO 拉高灌入 LED 电流）；
+> AO4407A 栅极经 **10kΩ 上拉到 +12V_DIRTY**，光耦集电极直接接栅极（飞线修复，原板缺此栅-源上拉）。
 >
 > | GPIO | TLP281 | AO4407A Gate | Vgs | MOSFET | 负载 |
 > |------|--------|-------------|-----|--------|------|
-> | Low（复位默认）| OFF | 经 10kΩ 上拉到 12V | 0V | **截止** | 断电 ✅ 失效安全 |
-> | High（开阀指令）| ON（拉 Gate→GND）| ~0.3V | −11.7V | **导通** | 通电 ✅ |
+> | **Low（复位默认）**| OFF | 经 10kΩ 上拉到 12V | 0V | **截止** | 断电 ✅ 失效安全 |
+> | **High（开阀指令）** | ON（拉 Gate→GND）| ~0.3V | −11.7V | **导通** | 通电 ✅ |
 >
-> **无需 S8050 反相级**：P 沟道直接由 TLP281 下拉栅极，逻辑与 N 沟道版完全相同（GPIO High = 负载 ON），电路更简洁。
+> **逻辑与 N 沟道版一致（GPIO High = 负载 ON）**：P 沟道由 TLP281 拉低栅极导通、10kΩ 上拉关断，无需 S8050 反相级。
 
 ### 5.2 GPIO 输入 — 4 路按键（V1.4：移至 PA6/PA7/PB0/PB1）
 
@@ -210,7 +213,7 @@ Voltage Scale          : Scale 2   (F401 ≤ 84 MHz 用 Scale 2)
 >
 > **若后期想切回 25 kHz**：把 PSC 改为 3、ARR 改为 839 即可（千分位占空比可读性会略差，但仍能保留 4 档阶梯精度）。
 
-### 5.5 I2C1 — OLED + AT24C64 共用
+### 5.5 I2C1 — OLED + AT24C08C 共用
 
 页面：**Connectivity → I2C1 → Mode**
 
@@ -403,8 +406,8 @@ Voltage Scale          : Scale 2   (F401 ≤ 84 MHz 用 Scale 2)
 | **PB3**                     | 引出                 | 未配置（保持 Reset 默认）                                 | 备用（Phase 2 浮球信号候选）                       |
 | **PB4**                     | 引出                 | 未配置（保持 Reset 默认）                                 | 备用                                       |
 | **PB5**                     | 引出                 | 未配置（保持 Reset 默认）                                 | 备用                                       |
-| **PB6**                     | 引出                 | **I2C1_SCL** AF4 OD No-Pull `I2C1_SCL`           | OLED + AT24C64 共用                        |
-| **PB7**                     | 引出                 | **I2C1_SDA** AF4 OD No-Pull `I2C1_SDA`           | OLED + AT24C64 共用                        |
+| **PB6**                     | 引出                 | **I2C1_SCL** AF4 OD No-Pull `I2C1_SCL`           | OLED + AT24C08C 共用                       |
+| **PB7**                     | 引出                 | **I2C1_SDA** AF4 OD No-Pull `I2C1_SDA`           | OLED + AT24C08C 共用                       |
 | **PB8**                     | 引出                 | 未配置（保持 Reset 默认）                                 | 备用                                       |
 | **PB9**                     | 引出                 | 未配置（保持 Reset 默认）                                 | 备用                                       |
 | **PB10**                    | 引出                 | 未配置（保持 Reset 默认）                                 | 备用（Phase 2 水浸传感器候选）                      |
@@ -447,7 +450,7 @@ __HAL_TIM_SET_COMPARE(&htim2, TIM_CHANNEL_1, 0);  /* 占空比 0%，水泵停 */
 
 ### 9.3 I2C1 上电后扫描
 
-调试期建议在 `main()` 中加一段 I²C 扫描，确认 OLED 0x3C 与 AT24C64 0x50 同时在线（详见硬件方案 § 13 验收测试 #5）：
+调试期建议在 `main()` 中加一段 I²C 扫描，确认 OLED 0x3C 与 AT24C08C 0x50 同时在线（详见硬件方案 § 13 验收测试 #9）：
 
 ```c
 for (uint8_t addr = 1; addr < 128; addr++) {
@@ -457,7 +460,7 @@ for (uint8_t addr = 1; addr < 128; addr++) {
 }
 ```
 
-应同时出现：`0x3C`（OLED）与 `0x50`（AT24C64）。
+应同时出现：`0x3C`（OLED）与 `0x50`（AT24C08C）。
 
 ### 9.4 GPIO 上电默认态确认
 
@@ -488,7 +491,7 @@ for (uint8_t addr = 1; addr < 128; addr++) {
 | § 6 泵 PWM（PA0 → TLP281 → AO4407A） | § 5.4 TIM2 CH Polarity = High    | PA0 High → TLP281 ON → Gate 拉低 → 水泵转；CCR=0 = 停泵 ✓    |
 | § 6 无独立 PUMP_EN                    | —（无该引脚）                          | L1 层纯软件（占空比=0 + 阀全关联锁）；看门狗复位保底 ✓                    |
 | § 6 OLED I²C 0x3C                  | § 5.5 I2C1 Fast Mode 400kHz      | I²C1 配置 OK                                           |
-| § 6 AT24C64 I²C 0x50 + WP 跳线       | § 5.5 I2C1 共用 + § 9.3 扫描验证       | 一致                                                   |
+| § 6 AT24C08C I²C 0x50 + WP 跳线      | § 5.5 I2C1 共用 + § 9.3 扫描验证       | 一致                                                   |
 | § 6 心跳灯 PC13 低电平点亮                | § 5.1 PC13 初始 High（灭）            | 一致                                                   |
 | § 7 PDN（无 LM2596，无 LR7843 模块）     | —                                | CubeMX 不涉及 PDN，硬件验收即可                                |
 
@@ -522,7 +525,7 @@ for (uint8_t addr = 1; addr < 128; addr++) {
 | 5   | Pinout 视图 PB6/PB7                          | 显示 `I2C1_SCL` / `I2C1_SDA`（绿色）                           |
 | 6   | Pinout 视图 PA13/PA14                        | 显示 `SYS_JTMS-SWDIO` / `SYS_JTCK-SWCLK`（绿色）               |
 | 7   | Pinout 视图 PA9/PA10                         | 显示 `USART1_TX` / `USART1_RX`（绿色）                         |
-| 8   | 阀控引脚 Output level（PA1~PA5）                 | 全部 **Low**（P-MOS 截止，失效安全）                                 |
+| 8   | 阀控引脚 Output level（PA1~PA5）                 | 全部 **Low**（TLP281 截止，P-MOS 截止，失效安全）                              |
 | 9   | 按键引脚 Pull（PA6/PA7/PB0/PB1）                 | 全部 **GPIO_Input + Pull-up**                              |
 | 10  | PB12~PB15 / PA8                            | **均保持 Reset 默认（灰色）**，未配置任何外设                             |
 | 11  | TIM2 ARR/PSC                               | **PSC=839, ARR=999**（100 Hz PWM）                         |

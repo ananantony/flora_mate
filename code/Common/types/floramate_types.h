@@ -42,8 +42,8 @@ typedef enum
 
     FM_ERR_010_CH_TIMEOUT    = 0x10, /**< 单路浇灌超时                        */
     FM_ERR_011_TOTAL_TIMEOUT = 0x11, /**< 总任务超时                          */
-    FM_ERR_012_INTERLOCK     = 0x12, /**< 互锁失败（无阀开就使能 PUMP_EN）       */
-    FM_ERR_013_PUMP_NO_POWER = 0x13, /**< PUMP_EN OFF 时被要求设 PWM            */
+    FM_ERR_012_INTERLOCK     = 0x12, /**< 互锁失败（通道越界）                  */
+    FM_ERR_013_PUMP_NO_POWER = 0x13, /**< 无阀开启时被要求设 PWM（防干转）       */
 
     FM_ERR_020_WATCHDOG      = 0x20, /**< 看门狗复位（V1.0 预留，未启用）      */
 
@@ -61,7 +61,7 @@ typedef enum
     FM_VALVE_Z2,
     FM_VALVE_Z3,
     FM_VALVE_Z4,
-    FM_VALVE_Z5,     /**< 备用第 5 路阀（PA8，MOSFET 驱动） */
+    FM_VALVE_Z5,     /**< 第 5 路阀（PA5，MOSFET 驱动） */
     FM_VALVE_NUM
 } Fm_ValveIndex;
 
@@ -71,7 +71,7 @@ typedef enum
 #define FM_BUILD_DATE_STR       __DATE__ " " __TIME__ /**< 编译时刻       */
 
 #define FM_STEP_MAX    (8U)                           /**< PWM 阶梯最多档数   */
-#define FM_CHANNEL_NUM (4U)                           /**< 主用 4 路水阀（Z1..Z4，Z5 为备用不计入默认任务数） */
+#define FM_CHANNEL_NUM (5U)                           /**< 主用 5 路水阀（Z1..Z5）*/
 
 /* 单路 / 总任务硬限（代码内 const，不允许 EEPROM 配置覆盖） */
 #define FM_PER_CHANNEL_HARD_LIMIT_S (120U) /**< 单路硬上限秒        */

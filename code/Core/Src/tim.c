@@ -110,12 +110,12 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* timHandle)
     /**TIM2 GPIO Configuration
     PA0-WKUP     ------> TIM2_CH1
     */
-    GPIO_InitStruct.Pin = PWM_PUMP_TIM2_CH1_Pin;
+    GPIO_InitStruct.Pin = PUMP_PWM_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
     GPIO_InitStruct.Alternate = GPIO_AF1_TIM2;
-    HAL_GPIO_Init(PWM_PUMP_TIM2_CH1_GPIO_Port, &GPIO_InitStruct);
+    HAL_GPIO_Init(PUMP_PWM_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN TIM2_MspPostInit 1 */
 

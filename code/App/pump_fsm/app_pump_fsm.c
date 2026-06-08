@@ -5,9 +5,9 @@
  * @LastEditors  : tonymeng0910@gmail.com
  * @LastEditTime : 2026-05-27 00:00:00
  * @Description  : 单路浇灌子状态机实现（固态 MOSFET 版）
- * @note         时序：阀 ON → 等机械 → PUMP_EN ON → 等稳压 → 阶梯 PWM → ramp → 关 PUMP_EN → 阀 OFF → 静默 → DONE
- *               关键铁律：先开分阀（Z1..Z5 MOSFET）再使能水泵（PUMP_EN MOSFET）；
- *                         先关水泵再关阀（由 Bsp_Valve_Set 互锁强制）。
+ * @note         时序：阀 ON → 等管路建压 → 阶梯 PWM → ramp-down → 阀 OFF → 静默 → DONE
+ *               关键铁律：先开分阀再启动 PWM，ramp-down 到 0% 后再关阀（防止干转）。
+ *               PUMP_EN 已从硬件移除，bsp_pump_pwm 通过 Bsp_Valve_AnyOn() 做干转保护。
  *
  * Copyright (c) 2026 by tony.meng, All Rights Reserved.
  *
@@ -27,9 +27,7 @@
 #include "bsp_tick.h"
 
 #define VALVE_OPEN_SETTLE_MS  (200U) /**< 分阀 MOSFET 导通后等待管路建压（ms） */
-#define PUMP_EN_STABILIZE_MS  (100U) /**< PUMP_EN 使能后等待水泵稳压（ms） */
 #define RAMP_DOWN_MS          (500U) /**< PWM 线性降至 0 的时长（ms） */
-#define CLOSE_PUMP_EN_RELAX_MS (500U) /**< 关 PUMP_EN 后卸压时间（ms） */
 #define CLOSE_VALVE_MS        (50U)  /**< 关分阀后进入 GAP 前的等待（ms） */
 
 /**
@@ -46,7 +44,7 @@ static void Set_State(App_Pump_FsmCtx *ctx, App_Pump_FsmState st)
 /**
  * @brief   将 Fm_ValveIndex 映射为 BSP 阀门驱动通道
  * @param   v  阀索引（FM_VALVE_Z1..Z5）
- * @retval  对应的 Bsp_Valve_Channel（BSP_VALVE_Z1..Z5_RSV）
+ * @retval  对应的 Bsp_Valve_Channel（BSP_VALVE_Z1..Z5）
  */
 static Bsp_Valve_Channel Valve_Channel(Fm_ValveIndex v)
 {
@@ -88,7 +86,7 @@ void App_Pump_Fsm_Abort(App_Pump_FsmCtx *ctx, Fm_ErrorCode reason)
  */
 void App_Pump_Fsm_Pause(App_Pump_FsmCtx *ctx)
 {
-    /* 简化：暂停 = 立即 ramp_down + 关 PUMP_EN；恢复时重新进入当前阶梯
+    /* 简化：暂停 = 立即 ramp_down；恢复时重新进入当前阶梯
      * V1.0 仅记录意图，正式实现留 Phase 2。
      */
     (void)ctx;
@@ -126,8 +124,8 @@ uint8_t App_Pump_Fsm_CurrentStep(const App_Pump_FsmCtx *ctx)
  * @param   ctx  上下文
  * @retval  true   仍在进行中
  * @retval  false  已 DONE 或 ERROR 终态，主 FSM 应推进到下一路
- * @note    INIT：开分阀 MOSFET → OPEN_PUMP_EN：使能水泵 12V → STEP：阶梯 PWM →
- *          RAMP_DOWN → CLOSE_PUMP_EN → CLOSE_VALVE → GAP → DONE。
+ * @note    INIT：开分阀 MOSFET → 等建压 → STEP：阶梯 PWM →
+ *          RAMP_DOWN → CLOSE_VALVE → GAP → DONE。
  */
 bool App_Pump_Fsm_Tick(App_Pump_FsmCtx *ctx)
 {
@@ -161,20 +159,9 @@ bool App_Pump_Fsm_Tick(App_Pump_FsmCtx *ctx)
         }
 
         case APP_PUMP_FSM_STATE_OPEN_PUMP_EN:
-            /* 分阀已开，使能水泵 12V；等稳压后进入阶梯 */
-            if (elapsed == 0U)
-            {
-                if (Bsp_Valve_Set(BSP_VALVE_PUMP_EN, true) != FM_OK)
-                {
-                    App_Pump_Fsm_Abort(ctx, FM_ERR_012_INTERLOCK);
-                    return false;
-                }
-            }
-            if (elapsed >= PUMP_EN_STABILIZE_MS)
-            {
-                ctx->step_idx = 0U;
-                Set_State(ctx, APP_PUMP_FSM_STATE_STEP);
-            }
+            /* [已废弃] 无 PUMP_EN GPIO，直接跳入阶梯执行 */
+            ctx->step_idx = 0U;
+            Set_State(ctx, APP_PUMP_FSM_STATE_STEP);
             return true;
 
         case APP_PUMP_FSM_STATE_STEP:
@@ -223,19 +210,12 @@ bool App_Pump_Fsm_Tick(App_Pump_FsmCtx *ctx)
             return true;
 
         case APP_PUMP_FSM_STATE_CLOSE_PUMP_EN:
-            /* 关断 PUMP_EN MOSFET（分阀仍开，互锁允许） */
-            if (elapsed == 0U)
-            {
-                (void)Bsp_Valve_Set(BSP_VALVE_PUMP_EN, false);
-            }
-            if (elapsed >= CLOSE_PUMP_EN_RELAX_MS)
-            {
-                Set_State(ctx, APP_PUMP_FSM_STATE_CLOSE_VALVE);
-            }
+            /* [已废弃] 无 PUMP_EN GPIO，直接跳入关阀 */
+            Set_State(ctx, APP_PUMP_FSM_STATE_CLOSE_VALVE);
             return true;
 
         case APP_PUMP_FSM_STATE_CLOSE_VALVE:
-            /* 此时 PUMP_EN=OFF，互锁允许关分阀 */
+            /* 关分阀：PWM 已降到 0，互锁允许 */
             if (elapsed == 0U)
             {
                 Bsp_Valve_Channel ch = Valve_Channel(ctx->valve);

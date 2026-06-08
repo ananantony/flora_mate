@@ -12,7 +12,7 @@
 
 #include <string.h>
 
-#define MANUAL_KEY_ITEM_COUNT (7U)
+#define MANUAL_KEY_ITEM_COUNT (6U)
 
 typedef struct
 {
@@ -26,23 +26,11 @@ static App_ManualKey_Ctx s_ctx;
 
 static Bsp_Valve_Channel Relay_For_Cursor(uint8_t cur)
 {
-    switch (cur)
+    if (cur < (uint8_t)BSP_VALVE_CHANNEL_NUM)
     {
-        case 0U:
-            return BSP_VALVE_PUMP_EN;
-        case 1U:
-            return BSP_VALVE_Z1;
-        case 2U:
-            return BSP_VALVE_Z2;
-        case 3U:
-            return BSP_VALVE_Z3;
-        case 4U:
-            return BSP_VALVE_Z4;
-        case 5U:
-            return BSP_VALVE_RSV;
-        default:
-            return BSP_VALVE_RSV;
+        return (Bsp_Valve_Channel)cur; /* cursor 0-4 → Z1-Z5 */
     }
+    return BSP_VALVE_Z1; /* fallback */
 }
 
 static void All_Outputs_Off(void)
@@ -58,7 +46,6 @@ static void All_Outputs_Off(void)
 static void Pump_Off(void)
 {
     Bsp_Pump_Pwm_Stop();
-    Bsp_Valve_DebugSet(BSP_VALVE_PUMP_EN, false);
     s_ctx.pump_duty = 0U;
     App_Display_MarkDirty();
 }
@@ -103,7 +90,7 @@ bool App_ManualKey_IsItemActive(void)
 
 bool App_ManualKey_IsPumpEditing(void)
 {
-    return s_ctx.item_active && (s_ctx.cursor == 6U);
+    return s_ctx.item_active && (s_ctx.cursor == 5U);
 }
 
 bool App_ManualKey_IsRelayOn(uint8_t idx)
@@ -127,7 +114,7 @@ void App_ManualKey_ClearExitRequest(void)
 
 static void Set_Relay_Cursor(bool on)
 {
-    if (s_ctx.cursor >= 6U)
+    if (s_ctx.cursor >= 5U)
     {
         return;
     }
@@ -151,7 +138,7 @@ static void Cursor_MoveUp(void)
 
 static void Adjust_Pump(int8_t delta)
 {
-    if (!s_ctx.item_active || (s_ctx.cursor != 6U))
+    if (!s_ctx.item_active || (s_ctx.cursor != 5U))
     {
         return;
     }
@@ -173,10 +160,6 @@ static void Adjust_Pump(int8_t delta)
     }
     else
     {
-        if (!Bsp_Valve_Get(BSP_VALVE_PUMP_EN))
-        {
-            Bsp_Valve_DebugSet(BSP_VALVE_PUMP_EN, true);
-        }
         (void)Bsp_Pump_Pwm_SetDutyPercent(s_ctx.pump_duty);
     }
     LOG_INFO_WITH_ARG("manual key: pwm %u%%", (unsigned)s_ctx.pump_duty);
@@ -197,7 +180,7 @@ void App_ManualKey_OnEvent(const App_Event *e)
             {
                 Cursor_MoveDown();
             }
-            else if (s_ctx.cursor == 6U)
+            else if (s_ctx.cursor == 5U)
             {
                 Adjust_Pump(5);
             }
@@ -212,7 +195,7 @@ void App_ManualKey_OnEvent(const App_Event *e)
             {
                 Cursor_MoveUp();
             }
-            else if (s_ctx.cursor == 6U)
+            else if (s_ctx.cursor == 5U)
             {
                 Adjust_Pump(-5);
             }
@@ -234,7 +217,7 @@ void App_ManualKey_OnEvent(const App_Event *e)
         case APP_EVENT_KEY_K4_SHORT:
             if (s_ctx.item_active)
             {
-                if (s_ctx.cursor == 6U)
+                if (s_ctx.cursor == 5U)
                 {
                     Pump_Off();
                 }

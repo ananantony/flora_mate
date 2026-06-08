@@ -104,7 +104,7 @@ if (u == 0U) {
 
 | 对象 | 规则 | 正例 | 反例 |
 |------|------|------|------|
-| 公开/模块 **函数**；本文件 **`static` 函数** | **Pascal+下划** 分模块与动作；**每段** 内为 **PascalCase** | `Bsp_Relay_SetPump` `App_Irrigation_FsmTick` | `bsp_relay_set_pump` `pump_duty_set` |
+| 公开/模块 **函数**；本文件 **`static` 函数** | **Pascal+下划** 分模块与动作；**每段** 内为 **PascalCase** | `Bsp_Valve_Set` `App_Irrigation_FsmTick` | `bsp_valve_set` `pump_duty_set` |
 | **结构体 / 枚举 的 `typedef` 名** | **Pascal+下划**；**不** 加 `_t` | `Bsp_Usart_Config` `Irr_FsmState` | `bsp_time_config_t` `Bsp_Time_Config_t` |
 | **枚举成员** | 与 **宏 相同**：**全大写+下划线**；**建议** 以 **模块/模块缩写** 前缀 防 与 `#define` 重名，如 `IRR_`、`BSP_` | `IRR_FSM_STATE_IDLE` `IRR_FSM_STATE_WATER` | `Irr_FsmState_Idle`（Pascal+下，**勿** 用于 枚举 成员） |
 | 全局/局部/**形参**（**非** `static` 存储类对象） | **小写+下划** | `pump_duty_permille` `zone_idx` | `PumpDuty` `PUMP_DUTY` |
@@ -126,7 +126,7 @@ if (u == 0U) {
 **示例**：
 
 ```c
-void Bsp_Relay_SetPump( bool is_on );
+void Bsp_Valve_Set( Bsp_Valve_Channel ch, bool is_on );
 void Bsp_Usart_SendBuffer( const uint8_t *data, size_t len );
 static void Bsp_Usart_ParseLine( void );
 
@@ -154,7 +154,7 @@ void f( int zone_idx, uint32_t precharge_ms ) {
 
 ### 3.2 源/头 **文件名**（**推荐**）
 
-- **应** 仍 **小写+下划**：`bsp_relay.c`、`bsp_usart.h`，减少 **跨平台/大小写** 仓库 问题。  
+- **应** 仍 **小写+下划**：`bsp_valve.c`、`bsp_usart.h`，减少 **跨平台/大小写** 仓库 问题。  
 - **防重入** 宏 可 `BSP_USART_H`，与 类型 `Bsp_` **二义** 无妨，**一表** 说明 即可。
 
 ### 3.3 变量 细则（小写+下划；`s_`+小写+下为 static）
@@ -178,7 +178,7 @@ void f( int zone_idx, uint32_t precharge_ms ) {
 
 | 不推荐 | 更推荐 | 原因 |
 |--------|--------|------|
-| `bsp_relay_set` | `Bsp_Relay_Set` / `Bsp_Relay_SetPump` | 函数 用 本版 **Pascal+下** |
+| `bsp_valve_set` | `Bsp_Valve_Set` / `Bsp_Valve_DebugSet` | 函数 用 本版 **Pascal+下** |
 | `Bsp_Time_Config_t` 带 `_t` | `Bsp_Time_Config` | **禁止** 类型 后缀 `_t` |
 | `Irr_FsmState_Idle` 作 枚举 成员 | `IRR_FSM_STATE_IDLE` 等 全 大写 | 与 **宏 同 风格** |
 | 文件内 `static uint8_t LineBuf[]` | `static uint8_t s_line_buf[]` | **必须** `s_`+蛇 形 |
@@ -248,8 +248,8 @@ void f( int zone_idx, uint32_t precharge_ms ) {
 
 ```c
 /**
- * @file    bsp_relay.c
- * @brief   继电器与泵/区阀的 GPIO 封装
+ * @file    bsp_valve.c
+ * @brief   区阀与泵的 GPIO 封装（P-MOS 高边，高电平有效）
  */
 ```
 

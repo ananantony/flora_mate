@@ -13,7 +13,7 @@
 │  app_display  app_config  app_event  app_log                │
 ├─────────────────────────────────────────────────────────────┤
 │ BSP 层（板级抽象）                                            │
-│  bsp_tick  bsp_usart_log  bsp_relay  bsp_pump_pwm           │
+│  bsp_tick  bsp_usart_log  bsp_valve  bsp_pump_pwm           │
 │  bsp_key   bsp_oled       bsp_eeprom                        │
 ├─────────────────────────────────────────────────────────────┤
 │ Common（公共库）                                              │
@@ -35,11 +35,11 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 |------|------|----------|------|
 | **时基** | `bsp_tick.c/h` | SysTick 1 ms 基准；`GetMs` / `ElapsedMs` / `DelayMs` | ✅ 完成 |
 | **USART 日志** | `bsp_usart_log.c/h` | USART1 115200 8N1；非阻塞环形缓冲 TX；`TxFlush` 中断推进 | ✅ 完成 |
-| **继电器** | `bsp_relay.c/h` | CH1 水泵总电源；CH2~CH5 四路阀；CH6 备用；互锁与自检 | ✅ 完成 |
-| **水泵 PWM** | `bsp_pump_pwm.c/h` | TIM2-CH1（PA0）100 Hz，1000 级分辨率；`SetDutyPercent` / `Stop` | ✅ 完成 |
-| **按键** | `bsp_key.c/h` | 4 键（PA1–PA4）消抖 20 ms；短按 / 长按 / 超长按阈值可配；事件回调注入 | ✅ 完成 |
+| **阀门** | `bsp_valve.c/h` | 5 路阀 Z1~Z5（PA1~PA5）AO4407A P-MOS 高边，高电平有效；干转互锁判定 `AnyOn`；逐路自检 | ✅ 完成 |
+| **水泵 PWM** | `bsp_pump_pwm.c/h` | TIM2-CH1（PA0）100 Hz，1000 级分辨率；`SetDutyPercent` / `Stop`；duty>0 需任一阀已开 | ✅ 完成 |
+| **按键** | `bsp_key.c/h` | 4 键（K1=PA6/K2=PA7/K3=PB0/K4=PB1）消抖 20 ms；短按 / 长按 / 超长按阈值可配；事件回调注入 | ✅ 完成 |
 | **OLED** | `bsp_oled.c/h` + `bsp_oled_font.h` | 1.3" 128×64 SSD1306/1315 I2C；6×8 + 16×16 字模 | ✅ 完成 |
-| **EEPROM** | `bsp_eeprom.c/h` | AT24C64 I2C；字节 / 页随机读写；在线探测 `IsOnline` | ✅ 完成 |
+| **EEPROM** | `bsp_eeprom.c/h` | AT24C08C I2C（1 KB，16 B/页）；字节 / 页随机读写；在线探测 `IsOnline` | ✅ 完成 |
 
 ### 2.2 Common 层
 
@@ -55,9 +55,9 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 |------|------|----------|------|
 | **日志** | `app_log.c/h` + `app_log_ring_buffer.c/h` + `app_log_types.h` | MPSC 环形缓冲；6 级过滤（FATAL–VERBOSE）；紧急模式直传；限速宏；异步 UART 消费 | ✅ 完成 |
 | **事件队列** | `app_event.c/h` | 8 槽 FIFO；`PostKey` 回调（供 BSP 按键调用）；`Pop`；`APP_EVENT_KEY_*` 枚举（SHORT / LONG / HOLD） | ✅ 完成 |
-| **配置存储** | `app_config.c/h` | AT24C64 双 Bank 轮换；Bank header + payload 各一 CRC-16；版本管理（`APP_CONFIG_VERSION=2`）；`SetField` / `GetField` / `Dump` / `FactoryReset` | ✅ 完成 |
+| **配置存储** | `app_config.c/h` | AT24C08C 双 Bank 轮换（仅配置，日志不入 EEPROM）；Bank header + payload 各一 CRC-16；版本管理；`SetField` / `GetField` / `Dump` / `FactoryReset` | ✅ 完成 |
 | **显示调度** | `app_display.c/h` | 100 ms 节流；按主 FSM 状态切换页面（BOOT / SELFTEST / IDLE 倒计时 / AUTO_RUN 进度 / MENU 委托 / DONE / ERROR / SLEEP） | ✅ 完成 |
-| **调试菜单** | `app_menu.c/h` | 主菜单 / 参数列表 / 单参数编辑 / 手动测试（继电器 + PWM）/ 系统信息 / 出厂复位；K1–K4 完整映射 | ✅ 完成 |
+| **调试菜单** | `app_menu.c/h` | 主菜单 / 参数列表 / 单参数编辑 / 手动测试（阀 + PWM）/ 系统信息 / 出厂复位；K1–K4 完整映射 | ✅ 完成 |
 | **主状态机** | `app_main_fsm.c/h` | 7 态 FSM：BOOT → SELFTEST → IDLE_3S → AUTO_RUN → DONE → SLEEP / ERROR；心跳 LED；总任务超时保护 | ✅ 完成 |
 | **水泵子 FSM** | `app_pump_fsm.c/h` | 单路 9 态 FSM：IDLE → INIT → OPEN_MAIN → STEP（8 档）→ RAMP_DOWN → CLOSE_MAIN → CLOSE_VALVE → GAP → DONE / ERROR；PWM 阶梯执行 | ✅ 完成 |
 | **应用装配** | `app_init.c/h` | `App_Init`（6 步顺序初始化）+ `App_Loop`（永不返回主循环） | ✅ 完成 |
@@ -75,7 +75,7 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 | **单路超时软检测** | `app_main_fsm.c:244-245` | 注释说明已预留注入点，目前靠总任务超时（600 s）兜底 |
 | **SLEEP 状态低功耗** | `app_main_fsm.c:287-289` | 状态机进入后永久驻留，未调用 `__WFI` / Stop 模式 |
 | **菜单周期逻辑** | `app_menu.c:App_Menu_Tick` | 函数体中只有预留注释，无超时返回等实际逻辑 |
-| **CH6 继电器** | `bsp_relay.h: BSP_RELAY_RSV_CH6` | 枚举值已定义，实际驱动管脚已配置（PB0），业务层未使用 |
+| **备用阀 Z5（PA5）** | `bsp_valve.h: BSP_VALVE_Z5` | 通道已定义并可驱动，业务层暂作备用（与 Z1~Z4 等价） |
 
 ### 3.2 V2.x 规划中的扩展功能
 
@@ -85,9 +85,9 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 | **串口命令行（CLI）** | 已完成 | `app_serial_debug`：3s 等待窗内 `debug` 进调试，否则正常 BOOT 流程；`AUTO_ENTER` 宏可上电直进调试 |
 | **定时自动浇灌** | 中 | 需外挂 RTC（MCU 内置 RTC 或外置 DS3231）+ 配置时间表；EEPROM 预留空间足够 |
 | **单路超时精细控制** | 低 | 目前靠总超时兜底；可在子 FSM Tick 内加 `per_channel_timeout_s` 判断 |
-| **水流传感器** | 低 | 架构支持，硬件 V1.0 未焊接；可接 PA5/PA6 外部中断计脉冲 |
+| **水流传感器** | 低 | 架构支持，硬件未焊接；可接预留 GPIO 外部中断计脉冲（注意避开已用引脚） |
 | **蓝牙 / WiFi 远程** | 低 | 预留 USART2 / SPI2 外扩模块；需增加通信适配层 |
-| **日志持久化（EEPROM 日志区）** | 低 | AT24C64 剩余 ~7.5 KB（0x0200–0x1FFF）可用于滚动日志；EEPROM 地址空间已预留 |
+| **日志持久化** | 低 | **AT24C08C 仅 1 KB，只存配置；日志在 RAM（易失）。** 如需掉电保留历史须换更大容量存储后再规划 |
 
 ---
 
@@ -111,16 +111,17 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 
 ### 4.2 BSP 单模块验证
 
-#### 4.2.1 继电器
+#### 4.2.1 电磁阀（P-MOS 高边）
 
 ```
 测试方法：进入串口调试态（上电后发送 `debug`）
-操作：`valve open 2`~`5` 测四路阀；`valve open 1` 测水泵总电源（建议先开一路阀）
+操作：`valve open 1`~`5` 逐路测 Z1~Z5（PA1~PA5）
 验证：
-  □ 对应 CH 继电器可听见"咔哒"声
+  □ 对应阀通电出水 / 指示灯变化（LED 灭 = 阀开，LED 亮 = 阀关）
+  □ 用万用表量 VALVEx_OUT_P（P-MOS 漏极）：阀开≈12V，阀关≈0V
   □ OLED 显示阀号和 ON/OFF 状态
   □ 串口无 I2C 错误日志
-退出时验证继电器全部 OFF（发送 `stop` 或 `valve close`）
+退出时验证全部阀 OFF（发送 `stop` 或 `valve close`）
 ```
 
 #### 4.2.2 水泵 PWM
@@ -128,12 +129,13 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 ```
 测试方法：进入串口调试态后用阀和泵命令联调
 推荐步骤：
-  1. `valve open 2`（任一路阀）
-  2. `pump 30`，再按需 `pump 50` / `pump 80`
+  1. `valve open 1`（任一路阀，满足干转互锁）
+  2. `pump 30`，再按需 `pump 50` / `pump 80`（实际夹到 ≤95%）
   3. 用示波器或逻辑分析仪测量 PA0 波形：
      □ 频率 100 Hz（±1%）
      □ 占空比与 OLED 显示一致
-  4. `pump off`，验证 PWM 归零且 CH1 释放
+  4. 无阀打开时发 `pump 30` 应被拒绝，返回 `FM_ERR_013_PUMP_NO_POWER`
+  5. `pump off`，验证 PWM 归零（停泵）
 ```
 
 #### 4.2.3 OLED
@@ -175,14 +177,14 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
   1. 上电 → 等待 IDLE 倒计时结束（或 K1 长按跳过）
   2. 观察 AUTO_RUN 进度：
      □ OLED 显示 "Zone 1 / Step X / Duty Y%"
-     □ 当前路阀 CH2~CH5 先吸合，约 200 ms 后 CH1 水泵电源吸合
+     □ 当前路阀 Z_i 先开，约 200 ms 后水泵 PWM 起调
      □ PWM 按配置阶梯输出
   3. 单路完成后观察：
-     □ PWM 先 RAMP_DOWN → CH1 断开 → 阀断开 → 路间静默
+     □ PWM 先 RAMP_DOWN → 停泵（PWM=0）→ 关阀 → 路间静默
      □ 继续下一路（若已使能）
   4. 全部完成后：
      □ 进入 DONE 页（"All Done!"），2 s 后转 SLEEP
-     □ 所有继电器确认为 OFF 状态（万用表/目视指示灯）
+     □ 所有阀确认为 OFF 状态（万用表/目视指示灯）
 ```
 
 #### 4.3.2 停止按钮测试
@@ -191,7 +193,7 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 步骤：AUTO_RUN 进行中 → 短按 K3
 验证：
   □ 日志 "auto run: user STOP (K3)"
-  □ 所有继电器立即 OFF（App_Pump_Fsm_Abort 调用 MainOffForce）
+  □ 所有阀立即 OFF（App_Pump_Fsm_Abort 调用 Bsp_Valve_ForceAllOff）
   □ 系统进入 DONE 后转 SLEEP
   □ 水流在 < 500 ms 内停止（阀门响应时间）
 ```
@@ -204,7 +206,7 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 验证：
   □ 日志出现 "auto run: TOTAL timeout (5s)"
   □ 系统进入 ERROR 状态
-  □ 所有继电器 OFF，心跳 LED 快速闪烁（100 ms）
+  □ 所有阀 OFF，心跳 LED 快速闪烁（100 ms）
   □ OLED 显示错误码
 ```
 
@@ -247,7 +249,7 @@ debug
 ```text
 debug
 status
-valve open 0
+valve open 1
 pump 30
 pump off
 valve close
@@ -283,9 +285,9 @@ valve close
 ### 阶段 3（可选增强）
 
 ```
-7. 日志持久化
-   - 在 EEPROM 0x0200 起划出滚动日志区（每条 32 B，可存约 230 条）
-   - App_Log 增加 RegisterPersistCallback，将 FATAL/ERROR 级别落盘
+7. 日志持久化（需先换更大容量存储）
+   - 当前 AT24C08C 仅 1 KB 且只存配置，**日志保持在 RAM（易失）**
+   - 如需掉电保留历史，改用 AT24C32/64 或 SPI Flash 后再划日志区
 
 8. RTC + 定时浇灌
    - 接入 MCU 内置 RTC（无需外接晶振，F401 内置 RC 精度够用）
@@ -293,8 +295,8 @@ valve close
    - App_Main_Fsm 在 SLEEP 态周期唤醒比对 RTC
 
 9. 暂停 / 继续功能
-   - App_Pump_Fsm_Pause：保存 step_idx，PWM 降为 0 并断 CH1
-   - App_Pump_Fsm_Resume：恢复 CH1 + 剩余时间继续
+   - App_Pump_Fsm_Pause：保存 step_idx，PWM 降为 0（停泵），保持当前阀
+   - App_Pump_Fsm_Resume：恢复 PWM + 剩余时间继续
 ```
 
 ---
@@ -304,10 +306,10 @@ valve close
 | 约束 | 说明 |
 |------|------|
 | **浇灌期间不可断电** | V1.0 无断电续浇逻辑；若中途断电，重启后会重新从第一路开始 |
-| **EEPROM 寿命** | AT24C64 典型写寿命 1,000,000 次；双 Bank + `update_count` 统计；建议累计写入 > 500,000 次时更换芯片 |
+| **EEPROM 寿命** | AT24C08C 典型写寿命 1,000,000 次；双 Bank + `update_count` 统计；仅低频配置写入，寿命非瓶颈 |
 | **看门狗未启用** | V1.0 无 IWDG；软件死锁时需手动断电复位，**待阶段 2 修复** |
 | **上电 3s 调试窗** | 默认 3s 内可发 `debug` 联调，超时走正常自动浇灌；`AUTO_ENTER=1` 可常开调试 |
-| **CH6 未使用** | 枚举已定义，管脚已配置（PB0），暂无业务连接 |
+| **备用阀 Z5（PA5）** | 通道已定义并可驱动，业务层暂未编排（与 Z1~Z4 等价） |
 | **K1 / K2 运行中无效** | AUTO_RUN 期间 K1（跳路）、K2（暂停）仅记录日志，**V1.0 预留** |
 | **SLEEP 不省电** | 进入 SLEEP 后 CPU 仍全速运行；**阶段 2 加 `__WFI`** |
 | **单路最大占空比 95%** | `FM_PUMP_DUTY_MAX_PERCENT = 95`，硬限，不允许 100%（过热保护） |

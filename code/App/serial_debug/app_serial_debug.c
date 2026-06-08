@@ -1,6 +1,6 @@
-ï»¿ï»¿/*
+/*
  * @File         : \code\App\serial_debug\app_serial_debug.c
- * @Description  : USART1 ä¸²å£è°ƒè¯•å‘½ä»¤è§£æ
+ * @Description  : USART1 ´®¿Úµ÷ÊÔÃüÁî½âÎö
  */
 #include "app_serial_debug.h"
 #include "app_serial_debug_config.h"
@@ -124,20 +124,19 @@ static bool Parse_U8_0_100(const char *s, uint8_t *out)
     return true;
 }
 
-/** ç”¨æˆ·åŒºå· 1~6 â†’ æ¨¡å— CH1~CH6ï¼š1=æ°´æ³µæ€»ç”µæºï¼Œ2~5=é˜€ï¼Œ6=å¤‡ç”¨ */
+/** ÓÃ»§ÇøºÅ 1~5 ¡ú ·§ÃÅÍ¨µÀ Z1~Z5 */
 static bool Parse_Relay_User_1_6(const char *s, Bsp_Valve_Channel *out, uint8_t *out_user_ch)
 {
-    static const Bsp_Valve_Channel s_map[6] = {
-        BSP_VALVE_PUMP_EN,
+    static const Bsp_Valve_Channel s_map[5] = {
         BSP_VALVE_Z1,
         BSP_VALVE_Z2,
         BSP_VALVE_Z3,
         BSP_VALVE_Z4,
-        BSP_VALVE_RSV,
+        BSP_VALVE_Z5,
     };
     char *end = NULL;
     long  v   = strtol(s, &end, 10);
-    if ((end == s) || (*Trim(end) != '\0') || (v < 1) || (v > 6))
+    if ((end == s) || (*Trim(end) != '\0') || (v < 1) || (v > 5))
     {
         return false;
     }
@@ -151,15 +150,15 @@ static bool Parse_Relay_User_1_6(const char *s, Bsp_Valve_Channel *out, uint8_t 
 
 static void Print_Relay_State(const char *tag)
 {
-    Uart_Printf("[I] %s sw ch1=%u v2=%u v3=%u v4=%u v5=%u ch6=%u\r\n", tag,
-                Bsp_Valve_Get(BSP_VALVE_PUMP_EN) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_Z1) ? 1U : 0U,
-                Bsp_Valve_Get(BSP_VALVE_Z2) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_Z3) ? 1U : 0U,
-                Bsp_Valve_Get(BSP_VALVE_Z4) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_RSV) ? 1U : 0U);
-    Uart_Printf("[I] %s gpio ch1=%u v2=%u v3=%u v4=%u v5=%u ch6=%u odr=0x%04lX\r\n", tag,
-                Bsp_Valve_GetGpio(BSP_VALVE_PUMP_EN) ? 1U : 0U, Bsp_Valve_GetGpio(BSP_VALVE_Z1) ? 1U : 0U,
-                Bsp_Valve_GetGpio(BSP_VALVE_Z2) ? 1U : 0U, Bsp_Valve_GetGpio(BSP_VALVE_Z3) ? 1U : 0U,
-                Bsp_Valve_GetGpio(BSP_VALVE_Z4) ? 1U : 0U, Bsp_Valve_GetGpio(BSP_VALVE_RSV) ? 1U : 0U,
-                (unsigned long)Bsp_Valve_GetGpioBOdrMask());
+    Uart_Printf("[I] %s sw v1=%u v2=%u v3=%u v4=%u v5=%u pwm=%u%%\r\n", tag,
+                Bsp_Valve_Get(BSP_VALVE_Z1) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_Z2) ? 1U : 0U,
+                Bsp_Valve_Get(BSP_VALVE_Z3) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_Z4) ? 1U : 0U,
+                Bsp_Valve_Get(BSP_VALVE_Z5) ? 1U : 0U, (unsigned)Bsp_Pump_Pwm_GetDutyPercent());
+    Uart_Printf("[I] %s gpio v1=%u v2=%u v3=%u v4=%u v5=%u odr=0x%04lX\r\n", tag,
+                Bsp_Valve_GetGpio(BSP_VALVE_Z1) ? 1U : 0U, Bsp_Valve_GetGpio(BSP_VALVE_Z2) ? 1U : 0U,
+                Bsp_Valve_GetGpio(BSP_VALVE_Z3) ? 1U : 0U, Bsp_Valve_GetGpio(BSP_VALVE_Z4) ? 1U : 0U,
+                Bsp_Valve_GetGpio(BSP_VALVE_Z5) ? 1U : 0U,
+                (unsigned long)Bsp_Valve_GetGpioAOdrMask());
 }
 
 static const char *Relay_User_Name(uint8_t user_ch)
@@ -167,17 +166,15 @@ static const char *Relay_User_Name(uint8_t user_ch)
     switch (user_ch)
     {
         case 1:
-            return "Pump";
-        case 2:
             return "V1";
-        case 3:
+        case 2:
             return "V2";
-        case 4:
+        case 3:
             return "V3";
-        case 5:
+        case 4:
             return "V4";
-        case 6:
-            return "Rsv";
+        case 5:
+            return "V5";
         default:
             return "?";
     }
@@ -352,7 +349,6 @@ static void Cmd_Pump(char *args)
     if (strcmp(args, "off") == 0)
     {
         Bsp_Pump_Pwm_Stop();
-        (void)Bsp_Valve_Set(BSP_VALVE_PUMP_EN, false);
         Uart_Print("[I] ok: pump off\r\n");
         Ui_SetResult(true, "pump off");
         return;
@@ -373,18 +369,11 @@ static void Cmd_Pump(char *args)
         return;
     }
 
-    Fm_ErrorCode err = Bsp_Valve_Set(BSP_VALVE_PUMP_EN, true);
+    Fm_ErrorCode err = Bsp_Pump_Pwm_SetDutyPercent(duty);
     if (err != FM_OK)
     {
-        Uart_Print("[E] err: interlock\r\n");
-        Ui_SetResult(false, "pump: need valve");
-        return;
-    }
-    err = Bsp_Pump_Pwm_SetDutyPercent(duty);
-    if (err != FM_OK)
-    {
-        Uart_Printf("[E] err: pump 0x%02X\r\n", (unsigned)err);
-        Ui_SetResult(false, "pump fail");
+        Uart_Printf("[E] err: pump 0x%02X (no valve open?)\r\n", (unsigned)err);
+        Ui_SetResult(false, "pump: no valve");
         return;
     }
     Uart_Printf("[I] ok: pump %u%%\r\n", (unsigned)duty);
@@ -401,7 +390,7 @@ static void Cmd_Valve(char *args)
         char             *num   = Trim(args + 5);
         if (!Parse_Relay_User_1_6(num, &ch, &user_ch))
         {
-            Uart_Print("[E] err: bad args (1-6)\r\n");
+            Uart_Print("[E] err: bad args (1-5)\r\n");
             Ui_SetResult(false, "valve: bad ch");
             return;
         }
@@ -431,7 +420,7 @@ static void Cmd_Valve(char *args)
         uint8_t           user_ch = 0U;
         if (!Parse_Relay_User_1_6(which, &ch, &user_ch))
         {
-            Uart_Print("[E] err: bad args (1-6)\r\n");
+            Uart_Print("[E] err: bad args (1-5)\r\n");
             Ui_SetResult(false, "valve: bad ch");
             return;
         }
@@ -656,7 +645,7 @@ void App_SerialDebug_Tick(void)
         SerialDebug_Tick_K4Exit();
     }
 
-    /* ä»…åœ¨ç­‰å¾…çª—ï¼ˆæœªè¿›å…¥è°ƒè¯•ï¼‰æ‰“å°å¿ƒè·³ */
+    /* ½öÔÚµÈ´ı´°£¨Î´½øÈëµ÷ÊÔ£©´òÓ¡ĞÄÌø */
     if (!s_active)
     {
         if (Bsp_Tick_ElapsedMs(s_last_hb_ms) >= SERIAL_DEBUG_HB_PERIOD_MS)

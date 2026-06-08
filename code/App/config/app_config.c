@@ -36,7 +36,7 @@ const App_Config g_factory_config = {
     .step_count            = 4U,
     .step_duty             = {35U, 55U, 75U, 95U, 0U, 0U, 0U, 0U},
     .step_seconds          = {3U, 3U, 3U, 3U, 0U, 0U, 0U, 0U},
-    .channel_enable        = 0x0FU,
+    .channel_enable        = 0x1FU,
 
     .idle_seconds          = 3U,
     .inter_gap_ms_x10      = 50U, /* 500 ms */
@@ -132,10 +132,10 @@ void App_Config_Clamp(App_Config *cfg)
         cfg->step_duty[i]    = Clamp_u8(cfg->step_duty[i], 0U, FM_PUMP_DUTY_MAX_PERCENT);
         cfg->step_seconds[i] = Clamp_u8(cfg->step_seconds[i], 0U, 60U);
     }
-    cfg->channel_enable &= 0x0FU;
+    cfg->channel_enable &= 0x1FU;
     if (cfg->channel_enable == 0U)
     {
-        cfg->channel_enable = 0x0FU;
+        cfg->channel_enable = 0x1FU;
     }
 
     cfg->idle_seconds          = Clamp_u8(cfg->idle_seconds, 1U, 30U);
@@ -417,7 +417,7 @@ typedef struct
 /** @brief 静态字段短名查找表（与菜单 s_param_names 一致） */
 static const App_Config_FieldMeta s_fields[] = {
     FIELD_U8("n_steps", step_count, 1, FM_STEP_MAX),
-    FIELD_U8("ch_en", channel_enable, 0, 15),
+    FIELD_U8("ch_en", channel_enable, 0, 31),
     FIELD_U8("idle", idle_seconds, 1, 30),
     FIELD_U8("gap_ms", inter_gap_ms_x10, 1, 250),
     FIELD_U16("tmo_ch", per_channel_timeout_s, 30, FM_PER_CHANNEL_HARD_LIMIT_S),

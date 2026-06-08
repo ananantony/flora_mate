@@ -47,7 +47,7 @@ typedef struct __attribute__((packed))
     uint8_t step_count;                /**< +8  PWM 阶梯档数 1~8             */
     uint8_t step_duty[FM_STEP_MAX];    /**< +9  每档占空比 %                 */
     uint8_t step_seconds[FM_STEP_MAX]; /**< +17 每档持续秒                   */
-    uint8_t channel_enable;            /**< +25 bit0~3 = 4 路开关             */
+    uint8_t channel_enable;            /**< +25 bit0~4 = 5 路开关（Z1~Z5）       */
 
     uint8_t  idle_seconds;             /**< +26 上电倒计时秒                  */
     uint8_t  inter_gap_ms_x10;         /**< +27 路间静默 ×10 ms              */

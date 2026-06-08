@@ -57,40 +57,36 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define LED_HEARTBEAT_PC13_Pin GPIO_PIN_13
-#define LED_HEARTBEAT_PC13_GPIO_Port GPIOC
-#define PWM_PUMP_TIM2_CH1_Pin GPIO_PIN_0
-#define PWM_PUMP_TIM2_CH1_GPIO_Port GPIOA
-#define KEY_K1_Pin GPIO_PIN_1
+#define LED_HEARTBEAT_Pin GPIO_PIN_13
+#define LED_HEARTBEAT_GPIO_Port GPIOC
+#define PUMP_PWM_Pin GPIO_PIN_0
+#define PUMP_PWM_GPIO_Port GPIOA
+#define VALVE_Z1_Pin GPIO_PIN_1
+#define VALVE_Z1_GPIO_Port GPIOA
+#define VALVE_Z2_Pin GPIO_PIN_2
+#define VALVE_Z2_GPIO_Port GPIOA
+#define VALVE_Z3_Pin GPIO_PIN_3
+#define VALVE_Z3_GPIO_Port GPIOA
+#define VALVE_Z4_Pin GPIO_PIN_4
+#define VALVE_Z4_GPIO_Port GPIOA
+#define VALVE_Z5_Pin GPIO_PIN_5
+#define VALVE_Z5_GPIO_Port GPIOA
+#define KEY_K1_Pin GPIO_PIN_6
 #define KEY_K1_GPIO_Port GPIOA
-#define KEY_K2_Pin GPIO_PIN_2
+#define KEY_K2_Pin GPIO_PIN_7
 #define KEY_K2_GPIO_Port GPIOA
-#define KEY_K3_Pin GPIO_PIN_3
-#define KEY_K3_GPIO_Port GPIOA
-#define KEY_K4_Pin GPIO_PIN_4
-#define KEY_K4_GPIO_Port GPIOA
-#define MOSFET_RSV_PB0_Pin GPIO_PIN_0
-#define MOSFET_RSV_PB0_GPIO_Port GPIOB
-#define PUMP_EN_PB1_Pin GPIO_PIN_1
-#define PUMP_EN_PB1_GPIO_Port GPIOB
-#define VALVE_Z1_PB12_Pin GPIO_PIN_12
-#define VALVE_Z1_PB12_GPIO_Port GPIOB
-#define VALVE_Z2_PB13_Pin GPIO_PIN_13
-#define VALVE_Z2_PB13_GPIO_Port GPIOB
-#define VALVE_Z3_PB14_Pin GPIO_PIN_14
-#define VALVE_Z3_PB14_GPIO_Port GPIOB
-#define VALVE_Z4_PB15_Pin GPIO_PIN_15
-#define VALVE_Z4_PB15_GPIO_Port GPIOB
-#define VALVE_Z5_RSV_PA8_Pin GPIO_PIN_8
-#define VALVE_Z5_RSV_PA8_GPIO_Port GPIOA
-#define USART1_TX_LOG_Pin GPIO_PIN_9
-#define USART1_TX_LOG_GPIO_Port GPIOA
-#define USART1_RX_CMD_Pin GPIO_PIN_10
-#define USART1_RX_CMD_GPIO_Port GPIOA
-#define I2C1_SCL_OLED_EEP_Pin GPIO_PIN_6
-#define I2C1_SCL_OLED_EEP_GPIO_Port GPIOB
-#define I2C1_SDA_OLED_EEP_Pin GPIO_PIN_7
-#define I2C1_SDA_OLED_EEP_GPIO_Port GPIOB
+#define KEY_K3_Pin GPIO_PIN_0
+#define KEY_K3_GPIO_Port GPIOB
+#define KEY_K4_Pin GPIO_PIN_1
+#define KEY_K4_GPIO_Port GPIOB
+#define USART1_TX_Pin GPIO_PIN_9
+#define USART1_TX_GPIO_Port GPIOA
+#define USART1_RX_Pin GPIO_PIN_10
+#define USART1_RX_GPIO_Port GPIOA
+#define I2C1_SCL_Pin GPIO_PIN_6
+#define I2C1_SCL_GPIO_Port GPIOB
+#define I2C1_SDA_Pin GPIO_PIN_7
+#define I2C1_SDA_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

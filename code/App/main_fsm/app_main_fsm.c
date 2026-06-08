@@ -79,7 +79,7 @@ static void Heartbeat_Update(uint32_t period_ms)
 {
     if (Bsp_Tick_ElapsedMs(s_ctx.last_heartbeat_ms) >= period_ms)
     {
-        HAL_GPIO_TogglePin(LED_HEARTBEAT_PC13_GPIO_Port, LED_HEARTBEAT_PC13_Pin);
+        HAL_GPIO_TogglePin(LED_HEARTBEAT_GPIO_Port, LED_HEARTBEAT_Pin);
         s_ctx.last_heartbeat_ms = Bsp_Tick_GetMs();
     }
 }

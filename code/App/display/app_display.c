@@ -458,10 +458,10 @@ static void Draw_SerialDebug(void)
 
     snprintf(s_line, sizeof(s_line), "Pwm:%u%% R:", (unsigned)Bsp_Pump_Pwm_GetDutyPercent());
     Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(2U), s_line, false);
-    snprintf(s_line, sizeof(s_line), "P%uv%u%u%u%u r%u",
-             Bsp_Valve_Get(BSP_VALVE_PUMP_EN) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_Z1) ? 1U : 0U,
-             Bsp_Valve_Get(BSP_VALVE_Z2) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_Z3) ? 1U : 0U,
-             Bsp_Valve_Get(BSP_VALVE_Z4) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_RSV) ? 1U : 0U);
+    snprintf(s_line, sizeof(s_line), "v%u%u%u%u%u Pwm:%u%%",
+             Bsp_Valve_Get(BSP_VALVE_Z1) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_Z2) ? 1U : 0U,
+             Bsp_Valve_Get(BSP_VALVE_Z3) ? 1U : 0U, Bsp_Valve_Get(BSP_VALVE_Z4) ? 1U : 0U,
+             Bsp_Valve_Get(BSP_VALVE_Z5) ? 1U : 0U, (unsigned)Bsp_Pump_Pwm_GetDutyPercent());
     Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(3U), s_line, false);
     Draw_ScreenEndEx("K4L 2s: exit debug");
 }
