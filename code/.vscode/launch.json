@@ -1,0 +1,28 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "ST-Link (OpenOCD) 烧录并调试",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/build/Debug/FloraMate.elf",
+            "args": [],
+            "stopAtEntry": false,
+            "cwd": "${workspaceFolder}",
+            "environment": [],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "miDebuggerPath": "C:/ST/STM32CubeIDE_2.1.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740/tools/bin/arm-none-eabi-gdb.exe",
+            "miDebuggerServerAddress": "localhost:3333",
+            "preLaunchTask": "Build & Start OpenOCD",
+            "setupCommands": [
+                { "text": "-target-select remote localhost:3333" },
+                { "text": "-file-exec-and-symbols ${workspaceFolder}/build/Debug/FloraMate.elf" },
+                { "text": "-interpreter-exec console \"monitor reset halt\"" },
+                { "text": "-target-download" },
+                { "text": "-target-reset" }
+            ],
+            "logging": { "engineLogging": false }
+        }
+    ]
+}

@@ -1,0 +1,14 @@
+{
+    // Microsoft CMake Tools 扩展配置（解决"未找到 CMake 可执行程序"）
+    "cmake.cmakePath": "C:/ST/STM32CubeIDE_2.1.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.cmake.win32_1.1.101.202603101401/tools/bin/cmake.exe",
+    "cmake.generator": "Ninja",
+    "cmake.buildDirectory": "${workspaceFolder}/build",
+    "cmake.configureOnOpen": true,
+    "cmake.useCMakePresets": "auto",
+    // STM32CubeIDE 扩展（如需手动指定工具链路径）
+    "stm32cube.armToolchainPath": "C:/ST/STM32CubeIDE_2.1.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.14.3.rel1.win32_1.0.100.202602081740/tools/bin",
+    "stm32cube.cmakePath": "C:/ST/STM32CubeIDE_2.1.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.cmake.win32_1.1.101.202603101401/tools/bin/cmake.exe",
+    "stm32cube.ninjaPath": "C:/ST/STM32CubeIDE_2.1.1/STM32CubeIDE/plugins/com.st.stm32cube.ide.mcu.externaltools.ninja.win32_1.1.100.202601091506/tools/bin/ninja.exe",
+    // C/C++ 插件
+    "C_Cpp.default.compileCommands": "${workspaceFolder}/build/Debug/compile_commands.json"
+}

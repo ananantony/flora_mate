@@ -115,6 +115,7 @@ $RECYCLE.BIN/
 !.vscode/launch.json
 !.vscode/tasks.json
 !.vscode/extensions.json
+!.vscode/c_cpp_properties.json
 
 # -----------------------------------------------------------------------------
 # Python / 脚本产物（如果项目里有 build 脚本）

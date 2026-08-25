@@ -94,11 +94,9 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
-#if !FM_BOARD_BRINGUP_LED_ONLY
   MX_I2C1_Init();
   MX_USART1_UART_Init();
   MX_TIM2_Init();
-#endif
   /* USER CODE BEGIN 2 */
 #if FM_BOARD_BRINGUP_LED_ONLY
   /* 首测模式：MX_GPIO_Init 已将 PC12(LED) 置 High(灭)，低电平点亮 */
