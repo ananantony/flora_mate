@@ -25,7 +25,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+/** 焊板首测：1 = 仅 PC12 心跳 LED 500 ms 闪烁；正式功能测试完成后改 0 并重新编译 */
+#define FM_BOARD_BRINGUP_LED_ONLY  (1)
+#define FM_BRINGUP_LED_PERIOD_MS   (500U)
+#if !FM_BOARD_BRINGUP_LED_ONLY
 #include "app_init.h"
+#endif
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -89,16 +94,30 @@ int main(void)
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
+#if !FM_BOARD_BRINGUP_LED_ONLY
   MX_I2C1_Init();
   MX_USART1_UART_Init();
   MX_TIM2_Init();
+#endif
   /* USER CODE BEGIN 2 */
+#if FM_BOARD_BRINGUP_LED_ONLY
+  /* 首测模式：MX_GPIO_Init 已将 PC12(LED) 置 High(灭)，低电平点亮 */
+#else
   App_Init();
+#endif
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
+#if FM_BOARD_BRINGUP_LED_ONLY
+  while (1)
+  {
+    HAL_GPIO_TogglePin(LED_HEARTBEAT_GPIO_Port, LED_HEARTBEAT_Pin);
+    HAL_Delay(FM_BRINGUP_LED_PERIOD_MS);
+  }
+#else
   App_Loop();
+#endif
   while (1)
   {
     /* USER CODE END WHILE */

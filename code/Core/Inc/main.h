@@ -57,8 +57,14 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define LED_HEARTBEAT_Pin GPIO_PIN_13
-#define LED_HEARTBEAT_GPIO_Port GPIOC
+#define KEY_K1_Pin GPIO_PIN_0
+#define KEY_K1_GPIO_Port GPIOC
+#define KEY_K2_Pin GPIO_PIN_1
+#define KEY_K2_GPIO_Port GPIOC
+#define KEY_K3_Pin GPIO_PIN_2
+#define KEY_K3_GPIO_Port GPIOC
+#define KEY_K4_Pin GPIO_PIN_3
+#define KEY_K4_GPIO_Port GPIOC
 #define PUMP_PWM_Pin GPIO_PIN_0
 #define PUMP_PWM_GPIO_Port GPIOA
 #define VALVE_Z1_Pin GPIO_PIN_1
@@ -71,18 +77,16 @@ void Error_Handler(void);
 #define VALVE_Z4_GPIO_Port GPIOA
 #define VALVE_Z5_Pin GPIO_PIN_5
 #define VALVE_Z5_GPIO_Port GPIOA
-#define KEY_K1_Pin GPIO_PIN_6
-#define KEY_K1_GPIO_Port GPIOA
-#define KEY_K2_Pin GPIO_PIN_7
-#define KEY_K2_GPIO_Port GPIOA
-#define KEY_K3_Pin GPIO_PIN_0
-#define KEY_K3_GPIO_Port GPIOB
-#define KEY_K4_Pin GPIO_PIN_1
-#define KEY_K4_GPIO_Port GPIOB
+#define I2C2_SCL_Pin GPIO_PIN_10
+#define I2C2_SCL_GPIO_Port GPIOB
+#define I2C2_SDA_BB_Pin GPIO_PIN_12
+#define I2C2_SDA_BB_GPIO_Port GPIOB
 #define USART1_TX_Pin GPIO_PIN_9
 #define USART1_TX_GPIO_Port GPIOA
 #define USART1_RX_Pin GPIO_PIN_10
 #define USART1_RX_GPIO_Port GPIOA
+#define LED_HEARTBEAT_Pin GPIO_PIN_12
+#define LED_HEARTBEAT_GPIO_Port GPIOC
 #define I2C1_SCL_Pin GPIO_PIN_6
 #define I2C1_SCL_GPIO_Port GPIOB
 #define I2C1_SDA_Pin GPIO_PIN_7
