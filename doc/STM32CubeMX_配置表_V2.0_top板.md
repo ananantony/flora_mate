@@ -60,7 +60,7 @@
 | **NRST** | R25 10 kΩ 上拉 + C14 100 nF | 默认，无需 MX 配置 |
 | **PA0 ~ PA5** | 510 Ω 串阻 → U1 → 驱动板 PUMP/VALVE CMD | PA0=TIM2 PWM；PA1~PA5=GPIO 阀控 |
 | **PC0 ~ PC3** | KEY1 端子 K1~K4（RC 滤波 + 10 kΩ 外部上拉） | GPIO Input，**No pull** |
-| **PC12** | LED1 蓝色指示灯（低电平点亮） | GPIO Output，初始 **High（灭）** |
+| **PC12** | 心跳灯 LED2（原理图位号；本文档称 LED1），阳极经 **R20 (470Ω)** 接 3.3V，低电平点亮 | GPIO Output，初始 **High（灭）** |
 | **PB6 / PB7** | I2C1 → AT24C08C + OLED1（R6/R7 4.7 kΩ 上拉） | I2C1 Fast 400 kHz |
 | **PB10 / PB12** | I2C2 → U1 Pin15/16 → 驱动板（R8/R9 4.7 kΩ 上拉 + R13/R17 100 Ω 串阻） | **PB10=I2C2_SCL**；**PB12 接 SDA 网络**（见 § 6.6 复用说明） |
 | **PA9 / PA10** | 经 R12/R15 1 kΩ → CH340C → Type-C USB | USART1 115200 8N1 |
@@ -131,7 +131,7 @@ Voltage Scale          : Scale 2   (F401 ≤ 84 MHz 用 Scale 2)
 | **PA3** | `VALVE_Z3` | **Low** | Push-Pull | Low | No pull | 经 R5(510Ω)→VALVE3_CMD |
 | **PA4** | `VALVE_Z4` | **Low** | Push-Pull | Low | No pull | 经 R10(510Ω)→VALVE4_CMD |
 | **PA5** | `VALVE_Z5` | **Low** | Push-Pull | Low | No pull | 经 R11(510Ω)→VALVE5_CMD |
-| **PC12** | `LED_HEARTBEAT` | **High** | Push-Pull | Low | No pull | LED1 阴极接 PC12；**低电平点亮** |
+| **PC12** | `LED_HEARTBEAT` | **High** | Push-Pull | Low | No pull | LED2 阴极接 PC12（原理图位号；本文档称 LED1），阳极经 **R20 (470Ω)** 接 3.3V；**低电平点亮** |
 
 > **P 沟道高边极性（驱动板侧，与 V3.0 一致）**
 >
@@ -375,7 +375,7 @@ LQFP64 封装**无 PB11**（另一 I2C2_SDA 复用脚），因此本板若要用
 | **PC2** | K3 | **GPIO In No-Pull** `KEY_K3` | 同上 |
 | **PC3** | K4 | **GPIO In No-Pull** `KEY_K4` | 同上 |
 | **PC4~PC11** | — | 未配置（Reset） | 备用 |
-| **PC12** | LED1 | **GPIO Out High** `LED_HEARTBEAT` | 低电平点亮 |
+| **PC12** | LED2（原理图位号；本文档称 LED1） | **GPIO Out High** `LED_HEARTBEAT` | 低电平点亮；R20=470Ω |
 | **PC13** | PC13 | 未配置（Reset） | 悬空预留 |
 | **PC14/PC15** | LSE 焊盘（未贴） | 保留，勿改 GPIO | — |
 | **PD2** | — | 未配置（Reset） | 备用 |

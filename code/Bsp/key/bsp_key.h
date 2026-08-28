@@ -4,7 +4,7 @@
  * @Date         : 2026-05-15 11:30:00
  * @LastEditors  : tonymeng0910@gmail.com
  * @LastEditTime : 2026-05-15 14:50:00
- * @Description  : 4 路独立按键模块（K1=PA6, K2=PA7, K3=PB0, K4=PB1，按下输出低电平）
+ * @Description  : 4 路独立按键模块（K1=PC0, K2=PC1, K3=PC2, K4=PC3，按下输出低电平）
  *
  * Copyright (c) 2026 by tony.meng, All Rights Reserved.
  *
@@ -27,10 +27,10 @@
  */
 typedef enum
 {
-    BSP_KEY_K1 = 0, /**< PA6：向下移动 / 增加数值         */
-    BSP_KEY_K2,     /**< PA7：向上移动 / 减少数值         */
-    BSP_KEY_K3,     /**< PB0：确定 / 进入                 */
-    BSP_KEY_K4,     /**< PB1：退出 / 返回                 */
+    BSP_KEY_K1 = 0, /**< PC0：向下移动 / 增加数值         */
+    BSP_KEY_K2,     /**< PC1：向上移动 / 减少数值         */
+    BSP_KEY_K3,     /**< PC2：确定 / 进入                 */
+    BSP_KEY_K4,     /**< PC3：退出 / 返回                 */
     BSP_KEY_NUM
 } Bsp_Key_Id;
 

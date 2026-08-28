@@ -2,11 +2,11 @@
  * @File         : \code\Bsp\valve\bsp_valve.h
  * @Author       : tonymeng
  * @Date         : 2026-06-06
- * @Description  : 固态驱动层：TLP281-4 光�?+ AO4407A P-MOS 高边开关（阀 Z1~Z5�? * @note         硬件拓扑（每通道，主动低驱动）：
- *               3V3 �?510Ω �?TLP281 阳极 �?阴极 �?MCU GPIO �?ISO_GND
- *               TLP281_C �?AO4407A 栅极（[10kΩ 上拉�?+12V_DIRTY]�? *               GPIO=1（High）→ TLP281 截止 �?栅极=+12V �?Vgs�? �?P-MOS 截止 �?负载 OFF（失效安全）
- *               GPIO=0（Low�?�?TLP281 ON  �?栅极→GND �?Vgs=-12V�?P-MOS 导�?�?负载 ON
- *               水泵调速使�?PA0 TIM2_CH1（PUMP_PWM），同路径（TLP281+AO4407A），不经本模块�? *
+ * @Description  : 固态驱动层：TLP281-4 光耦 + AO4407A P-MOS 高边开关（阀 Z1~Z5）
+ * @note         GPIO 逻辑（高电平有效，与 bsp_valve.c 一致）：
+ *               MCU GPIO → 510Ω → TLP281 阳极 → 阴极 → ISO_GND；栅极经 10kΩ 上拉到 +12V_DIRTY
+ *               GPIO High = TLP281 ON  → Gate→GND_DIRTY → Vgs=-12V → P-MOS 导通 → 负载 ON
+ *               GPIO Low  = TLP281 截止 → Gate=+12V（10kΩ上拉）→ Vgs≈0 → P-MOS 截止 → 负载 OFF（失效安全）
  * Copyright (c) 2026 by tony.meng, All Rights Reserved.
  */
 #ifndef BSP_VALVE_H
