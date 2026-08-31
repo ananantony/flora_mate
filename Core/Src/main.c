@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-/** 焊板首测：1 = 仅 PC12 心跳 LED 500 ms 闪烁；正式功能测试完成后改 0 并重新编译 */
+/** 焊板首测：1 = 仅 PC13 心跳 LED 500 ms 闪烁；正式功能测试完成后改 0 并重新编译 */
 #define FM_BOARD_BRINGUP_LED_ONLY  (0)
 #define FM_BRINGUP_LED_PERIOD_MS   (500U)
 #if !FM_BOARD_BRINGUP_LED_ONLY
@@ -99,7 +99,7 @@ int main(void)
   MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 #if FM_BOARD_BRINGUP_LED_ONLY
-  /* 首测模式：MX_GPIO_Init 已将 PC12(LED) 置 High(灭)，低电平点亮 */
+  /* 首测模式：MX_GPIO_Init 已将 PC13(LED) 置 High(灭)，低电平点亮 */
 #else
   App_Init();
 #endif
