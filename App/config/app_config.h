@@ -60,7 +60,8 @@ typedef struct __attribute__((packed))
     uint8_t  oled_contrast;            /**< +38 OLED 对比度                              */
     uint8_t  log_level;                /**< +39 0=E 1=W 2=I 3=D                          */
 
-    uint8_t  reserved1[22];            /**< +40 预留（升级用）                            */
+    uint8_t  hw_version;               /**< +40 硬件版本号 BCD（0x31 = 3.1）              */
+    uint8_t  reserved1[21];            /**< +41 预留（升级用）                            */
     uint16_t crc16;                    /**< +62 前 62 字节的 CRC-16-CCITT                 */
 } App_Config;
 

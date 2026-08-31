@@ -26,7 +26,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /** 焊板首测：1 = 仅 PC12 心跳 LED 500 ms 闪烁；正式功能测试完成后改 0 并重新编译 */
-#define FM_BOARD_BRINGUP_LED_ONLY  (1)
+#define FM_BOARD_BRINGUP_LED_ONLY  (0)
 #define FM_BRINGUP_LED_PERIOD_MS   (500U)
 #if !FM_BOARD_BRINGUP_LED_ONLY
 #include "app_init.h"
@@ -111,6 +111,7 @@ int main(void)
   while (1)
   {
     HAL_GPIO_TogglePin(LED_HEARTBEAT_GPIO_Port, LED_HEARTBEAT_Pin);
+    HAL_UART_Transmit(&huart1, (uint8_t *)"hello world\r\n", 13, HAL_MAX_DELAY);
     HAL_Delay(FM_BRINGUP_LED_PERIOD_MS);
   }
 #else

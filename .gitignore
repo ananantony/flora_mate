@@ -8,31 +8,38 @@
 # -----------------------------------------------------------------------------
 # CubeIDE / Eclipse 编译产物（每次编译重新生成，几十 MB）
 # -----------------------------------------------------------------------------
-code/Debug/
-code/Release/
-code/build/
-code/cmake-build-*/
+Debug/
+Release/
+build/
+cmake-build-*/
 
 # Eclipse / CubeIDE 工作区缓存（平台相关、跨机不兼容）
-code/.metadata/
-code/RemoteSystemsTempFiles/
+.metadata/
+RemoteSystemsTempFiles/
 *.launch
 
 # -----------------------------------------------------------------------------
 # 标准 C/C++ 编译产物（仅作兜底；厂家资料目录里同名文件由路径规则白名单保留）
 # -----------------------------------------------------------------------------
-# code/ 下的中间产物
-code/**/*.o
-code/**/*.obj
-code/**/*.d
-code/**/*.elf
-code/**/*.map
-code/**/*.bin
-code/**/*.hex
-code/**/*.lst
-code/**/*.su
-code/**/*.cyclo
-code/**/*.axf
+# 编译中间产物（厂家资料目录 file/ 中的参考性文件由下方白名单保留）
+**/*.o
+**/*.obj
+**/*.d
+**/*.elf
+**/*.map
+**/*.bin
+**/*.hex
+**/*.lst
+**/*.su
+**/*.cyclo
+**/*.axf
+
+# 例外：厂家资料目录 file/ 中的参考性 hex/axf/elf/bin/map 保留
+!file/**/*.hex
+!file/**/*.axf
+!file/**/*.elf
+!file/**/*.bin
+!file/**/*.map
 
 # 静态库 / 调试符号
 *.a
@@ -116,6 +123,9 @@ $RECYCLE.BIN/
 !.vscode/tasks.json
 !.vscode/extensions.json
 !.vscode/c_cpp_properties.json
+
+# CodeBuddy IDE 本地状态
+.settings/
 
 # -----------------------------------------------------------------------------
 # Python / 脚本产物（如果项目里有 build 脚本）

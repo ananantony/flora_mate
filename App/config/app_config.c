@@ -49,6 +49,7 @@ const App_Config g_factory_config = {
     .oled_contrast         = 128U,
     .log_level             = 2U,
 
+    .hw_version            = FM_HARDWARE_VERSION_BCD,
     .reserved1             = {0},
     .crc16                 = 0U
 };
@@ -245,7 +246,7 @@ void App_Config_Init(void)
         s_source        = APP_CONFIG_LOADED_FACTORY;
         s_active_bank   = 'A';
         s_last_seq      = 0U;
-        LOG_WARN("config: factory defaults loaded (EEPROM empty or corrupt)");
+        LOG_WARN("config: storage not initialized, using factory defaults");
         return;
     }
 
@@ -587,6 +588,8 @@ void App_Config_Dump(void)
                       (s_source == APP_CONFIG_LOADED_FACTORY) ? 'F'
                                                               : ((s_source == APP_CONFIG_LOADED_BANK_A) ? 'A' : 'B'),
                       (unsigned long)s_last_seq, (unsigned long)c->update_count);
+    LOG_INFO_WITH_ARG("fw=%s  hw=%u.%u", FM_FIRMWARE_VERSION_STR, (unsigned)(c->hw_version >> 4U),
+                      (unsigned)(c->hw_version & 0x0FU));
     LOG_INFO_WITH_ARG("n_steps=%u  ch_en=0x%02X  idle=%u  gap_ms=%u", c->step_count, c->channel_enable, c->idle_seconds,
                       (unsigned)c->inter_gap_ms_x10 * 10U);
     for (uint32_t i = 0U; i < c->step_count; i++)

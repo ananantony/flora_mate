@@ -764,9 +764,8 @@ void App_Display_Tick(void)
 {
     App_Main_FsmState     st              = App_Main_Fsm_GetState();
     bool                  force_refresh   =
-        (st == APP_MAIN_FSM_STATE_SERIAL_WAIT) || (st == APP_MAIN_FSM_STATE_SERIAL_DEBUG) ||
-        (st == APP_MAIN_FSM_STATE_MANUAL_SELECT) || (st == APP_MAIN_FSM_STATE_MANUAL_KEY) ||
-        (st == APP_MAIN_FSM_STATE_MENU);
+        (st == APP_MAIN_FSM_STATE_SERIAL_WAIT) || (st == APP_MAIN_FSM_STATE_MANUAL_SELECT) ||
+        (st == APP_MAIN_FSM_STATE_MANUAL_KEY) || (st == APP_MAIN_FSM_STATE_MENU);
     bool                  state_changed   = (st != s_last_fsm_state);
     App_SerialDebug_UiState serial_ui       = APP_SERIAL_DEBUG_UI_IDLE;
     bool                  serial_ui_changed = false;

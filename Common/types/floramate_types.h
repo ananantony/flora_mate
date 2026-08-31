@@ -68,6 +68,8 @@ typedef enum
 /* ==== 项目级编译期常量 ============================================== */
 
 #define FM_FIRMWARE_VERSION_STR "FloraMate V1.0"      /**< 显示用版本串       */
+#define FM_HARDWARE_VERSION_STR "V3.1"                /**< 硬件版本串         */
+#define FM_HARDWARE_VERSION_BCD (0x31U)               /**< 硬件版本 BCD：3.1   */
 #define FM_BUILD_DATE_STR       __DATE__ " " __TIME__ /**< 编译时刻       */
 
 #define FM_STEP_MAX    (8U)                           /**< PWM 阶梯最多档数   */

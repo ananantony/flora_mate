@@ -3,7 +3,7 @@
  * @Author       : tonymeng
  * @Date         : 2026-05-15 11:30:00
  * @LastEditors  : tonymeng0910@gmail.com
- * @LastEditTime : 2026-05-15 14:50:00
+ * @LastEditTime : 2026-08-31 15:49:54
  * @Description  : 独立按键模块×4（按下低电平）；20ms 扫描 + 去抖 + LONG/HOLD
  *
  * Copyright (c) 2026 by tony.meng, All Rights Reserved.

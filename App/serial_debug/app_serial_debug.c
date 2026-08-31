@@ -1,6 +1,6 @@
 /*
  * @File         : \code\App\serial_debug\app_serial_debug.c
- * @Description  : USART1 ���ڵ����������
+ * @Description  : USART1 串口调试命令解析
  */
 #include "app_serial_debug.h"
 #include "app_serial_debug_config.h"
@@ -36,6 +36,7 @@ static bool                    s_key_test_active;
 static uint8_t                 s_key_test_last_mask;
 static bool                    s_k4_exit_tracking;
 static uint32_t                s_k4_exit_hold_start_ms;
+static bool                    s_reset_pending; /**< cfg reset 二次确认待决标志 */
 
 static void KeyTest_Stop(void)
 {
@@ -124,7 +125,7 @@ static bool Parse_U8_0_100(const char *s, uint8_t *out)
     return true;
 }
 
-/** �û����� 1~5 �� ����ͨ�� Z1~Z5 */
+/** 用户区号 1~5 → 阀门通道 Z1~Z5 */
 static bool Parse_Relay_User_1_6(const char *s, Bsp_Valve_Channel *out, uint8_t *out_user_ch)
 {
     static const Bsp_Valve_Channel s_map[5] = {
@@ -436,13 +437,39 @@ static void Cmd_Valve(char *args)
     Ui_SetResult(false, "valve: usage");
 }
 
+static void Cmd_CfgDumpAll(void)
+{
+    const App_Config *c = App_Config_Get();
+    App_Config_Source src = App_Config_GetSource();
+
+    Uart_Print("[I] ==== config dump ====\r\n");
+    Uart_Printf("[I] fw=%s  hw=%u.%u\r\n", FM_FIRMWARE_VERSION_STR, (unsigned)(c->hw_version >> 4U),
+                (unsigned)(c->hw_version & 0x0FU));
+    Uart_Printf("[I] src=%s  update_count=%lu\r\n",
+                (src == APP_CONFIG_LOADED_FACTORY) ? "factory"
+                                                   : ((src == APP_CONFIG_LOADED_BANK_A) ? "bank_a" : "bank_b"),
+                (unsigned long)c->update_count);
+
+    Uart_Printf("[I] n_steps=%u  ch_en=0x%02X  idle=%us  gap=%ums\r\n", c->step_count, c->channel_enable,
+                c->idle_seconds, (unsigned)c->inter_gap_ms_x10 * 10U);
+    for (uint32_t i = 0U; i < FM_STEP_MAX; i++)
+    {
+        Uart_Printf("[I]   duty[%lu]=%u%%  sec[%lu]=%us\r\n", (unsigned long)i, c->step_duty[i], (unsigned long)i,
+                    c->step_seconds[i]);
+    }
+    Uart_Printf("[I] tmo_ch=%us  tmo_all=%us  selftest=%ums\r\n", c->per_channel_timeout_s, c->total_timeout_s,
+                c->selftest_pulse_ms);
+    Uart_Printf("[I] long=%ums  hold=%ums  contrast=%u  log=%u\r\n", (unsigned)c->long_press_ms_x10 * 10U,
+                (unsigned)c->hold_press_ms_x10 * 10U, c->oled_contrast, c->log_level);
+    Uart_Print("[I] ==== config dump end ====\r\n");
+}
+
 static void Cmd_Cfg(char *args)
 {
     args = Trim(args);
     if (strcmp(args, "dump") == 0)
     {
-        App_Config_Dump();
-        Uart_Print("[I] ok: cfg dump\r\n");
+        Cmd_CfgDumpAll();
         Ui_SetResult(true, "cfg dump");
         return;
     }
@@ -462,15 +489,23 @@ static void Cmd_Cfg(char *args)
     }
     if (strcmp(args, "reset") == 0)
     {
-        bool ok = (App_Config_FactoryReset() == FM_OK);
-        Uart_Print(ok ? "[I] ok: factory reset\r\n" : "[E] err: factory reset\r\n");
-        Ui_SetResult(ok, ok ? "factory rst" : "rst fail");
+        s_reset_pending = true;
+        Uart_Print("[W] cfg reset: wipe EEPROM to factory defaults?\r\n");
+        Uart_Print("[W]   send 'y' to confirm, any other key to cancel\r\n");
+        Ui_SetRunning("reset confirm");
         return;
     }
-    if (strncmp(args, "get ", 4U) == 0)
+    if ((strcmp(args, "get") == 0) || (strncmp(args, "get ", 4U) == 0))
     {
-        int32_t v    = 0;
-        char   *name = Trim(args + 4);
+        char *name = Trim(args + 3);
+        if (*name == '\0')
+        {
+            /* 无字段名：列出全部 */
+            Cmd_CfgDumpAll();
+            Ui_SetResult(true, "cfg get all");
+            return;
+        }
+        int32_t v = 0;
         if (App_Config_GetField(name, &v) == FM_OK)
         {
             Uart_Printf("[I] %s=%ld\r\n", name, (long)v);
@@ -501,7 +536,12 @@ static void Cmd_Cfg(char *args)
         value++;
         int32_t v = (int32_t)strtol(Trim(value), NULL, 10);
         bool    ok = (App_Config_SetField(name, v) == FM_OK);
-        Uart_Print(ok ? "[I] ok: cfg set\r\n" : "[E] err: unknown field\r\n");
+        if (ok)
+        {
+            /* 修改 RAM 后立即持久化到 EEPROM（内存与存储同步） */
+            ok = (App_Config_Save() == FM_OK);
+        }
+        Uart_Print(ok ? "[I] ok: cfg set (persisted to EEPROM)\r\n" : "[E] err: cfg set/save fail\r\n");
         Ui_SetResult(ok, ok ? "cfg set ok" : "set fail");
         return;
     }
@@ -543,6 +583,25 @@ static void Process_Command(char *line)
     {
         Uart_Print("[E] err: send debug first\r\n");
         Ui_SetResult(false, "need debug");
+        return;
+    }
+
+    /* cfg reset 二次确认优先处理 */
+    if (s_reset_pending)
+    {
+        s_reset_pending = false;
+        if ((strcmp(cmd, "y") == 0) || (strcmp(cmd, "yes") == 0))
+        {
+            bool ok = (App_Config_FactoryReset() == FM_OK);
+            Uart_Print(ok ? "[I] ok: factory reset done (EEPROM wiped to defaults)\r\n"
+                          : "[E] err: factory reset\r\n");
+            Ui_SetResult(ok, ok ? "factory rst" : "rst fail");
+        }
+        else
+        {
+            Uart_Print("[I] cancel: factory reset aborted\r\n");
+            Ui_SetResult(true, "reset cancel");
+        }
         return;
     }
 
@@ -645,7 +704,7 @@ void App_SerialDebug_Tick(void)
         SerialDebug_Tick_K4Exit();
     }
 
-    /* ���ڵȴ�����δ������ԣ���ӡ���� */
+    /* 心跳：串口调试态不打印；其余状态每秒打印 uptime（等待窗内附带剩余倒计时） */
     if (!s_active)
     {
         if (Bsp_Tick_ElapsedMs(s_last_hb_ms) >= SERIAL_DEBUG_HB_PERIOD_MS)
@@ -656,6 +715,10 @@ void App_SerialDebug_Tick(void)
             {
                 Uart_Printf("[I] hb uptime_ms=%lu wait_remain_ms=%lu\r\n", (unsigned long)s_last_hb_ms,
                             (unsigned long)remain);
+            }
+            else
+            {
+                Uart_Printf("[I] hb uptime_ms=%lu\r\n", (unsigned long)s_last_hb_ms);
             }
         }
     }
