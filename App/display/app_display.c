@@ -18,19 +18,15 @@
  */
 #include "app_display.h"
 #include "app_main_fsm.h"
-#include <string.h>
 #include "app_menu.h"
-#include "app_pump_fsm.h"
 #include "app_config.h"
-#include "app_manual_key.h"
-#include "app_manual_select.h"
 #include "app_serial_debug.h"
-#include "app_serial_debug_config.h"
 #include "bsp_key.h"
 #include "bsp_valve.h"
 #include "bsp_oled.h"
 #include "bsp_pump_pwm.h"
 #include "bsp_tick.h"
+#include "floramate_types.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -244,149 +240,84 @@ static void Draw_ProgressBar(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t
     Bsp_Oled_FbFillRect((uint8_t)(x + 1U), (uint8_t)(y + 1U), fill_w, (uint8_t)(h - 2U), true);
 }
 
-/** @brief BOOT 页：固定 logo + 版本号 */
-static void Draw_Boot(void)
+#define DISP_MENU_VISIBLE_ROWS (4U)
+
+static void Parse_Sw_Version(unsigned *maj, unsigned *min)
 {
-    Bsp_Oled_FbClear();
-    Draw_TitleBar("FloraMate");
-    Bsp_Oled_FbDrawStr6x8(2U, DISP_PAGE_BODY0, "Booting...", false);
-    Bsp_Oled_FbDrawStr6x8(2U, 4U, "V1.0", false);
+    const char *s = FM_FIRMWARE_VERSION_STR;
+    const char *v = strchr(s, 'V');
+
+    *maj = 0U;
+    *min = 0U;
+    if (v != NULL)
+    {
+        (void)sscanf(v + 1, "%u.%u", maj, min);
+    }
 }
 
-/** @brief 上电等待页：超时自动浇灌；debug 或 K1+K2 进手动 */
-static void Draw_SerialWait(void)
+/** @brief P0 Logo：FloraMate + SW/HW；读取失败显示 0.0 */
+static void Draw_Logo(void)
 {
-    uint32_t remain_ms = App_Main_Fsm_GetBootWaitRemainMs();
+    bool cfg_fail = (App_Config_GetSource() == APP_CONFIG_LOADED_FACTORY);
+
+    Bsp_Oled_FbClear();
+    Draw_TitleBar("FloraMate");
+
+    if (cfg_fail)
+    {
+        Bsp_Oled_FbDrawStr6x8(2U, DISP_PAGE_BODY0, "SW 0.0", false);
+        Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(1U), "HW 0.0", false);
+        Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(2U), "CFG LOAD FAIL", false);
+    }
+    else
+    {
+        unsigned sw_maj = 0U;
+        unsigned sw_min = 0U;
+        unsigned hw_maj = 0U;
+        unsigned hw_min = 0U;
+        const App_Config *cfg = App_Config_Get();
+
+        Parse_Sw_Version(&sw_maj, &sw_min);
+        hw_maj = (unsigned)(cfg->hw_version >> 4U);
+        hw_min = (unsigned)(cfg->hw_version & 0x0FU);
+        snprintf(s_line, sizeof(s_line), "SW %u.%u", sw_maj, sw_min);
+        Bsp_Oled_FbDrawStr6x8(2U, DISP_PAGE_BODY0, s_line, false);
+        snprintf(s_line, sizeof(s_line), "HW %u.%u", hw_maj, hw_min);
+        Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(1U), s_line, false);
+    }
+}
+
+/** @brief P1 Idle：5s 倒计时 + K1+K3 进主界面 */
+static void Draw_Idle(void)
+{
+    uint32_t remain_ms = App_Main_Fsm_GetIdleRemainMs();
     uint8_t  remain_s  = (uint8_t)((remain_ms + 999U) / 1000U);
-    uint8_t  combo_pct = App_Main_Fsm_GetBootWaitComboPercent();
-    bool     paused    = App_Main_Fsm_IsBootWaitTimerPaused();
+    uint8_t  combo_pct = App_Main_Fsm_GetIdleComboPercent();
+    bool     paused    = App_Main_Fsm_IsIdleTimerPaused();
 
     if (remain_s == 0U)
     {
         remain_s = 1U;
     }
 
-    Draw_ScreenBegin("Boot Wait");
+    Draw_ScreenBegin("IDLE");
     if (paused)
     {
-        Bsp_Oled_FbFillRect(2U, 15U, 124U, 8U, true);
-        Bsp_Oled_FbDrawStr6x8At(8U, 15U, "Timer PAUSED", true);
-        Bsp_Oled_FbDrawStr6x8At(2U, 29U, "Hold K1+K2 2.5s", false);
+        Bsp_Oled_FbDrawStr6x8At(2U, 14U, "Timer PAUSED", false);
+        snprintf(s_line, sizeof(s_line), "Hold %u%%", (unsigned)combo_pct);
+        Bsp_Oled_FbDrawStr6x8At(2U, 24U, s_line, false);
+        Draw_ProgressBar(2U, 34U, 124U, 5U, combo_pct);
+        Bsp_Oled_FbDrawStr6x8At(2U, 42U, "K1+K3 2s->Menu", false);
     }
     else
     {
         snprintf(s_line, sizeof(s_line), "Auto in %us", (unsigned)remain_s);
         Bsp_Oled_FbDrawStr6x8At(2U, 14U, s_line, false);
+        Bsp_Oled_FbDrawStr6x8At(2U, 28U, "Hold K1+K3 2s", false);
+        Bsp_Oled_FbDrawStr6x8At(2U, 38U, "  -> Main Menu", false);
+        Bsp_Oled_FbDrawStr6x8At(2U, 48U, "UART: debug", false);
     }
-    if (combo_pct > 0U)
-    {
-        snprintf(s_line, sizeof(s_line), "Manual %u%%", (unsigned)combo_pct);
-        Bsp_Oled_FbDrawStr6x8At(2U, 40U, s_line, false);
-        Draw_ProgressBar(2U, 50U, 124U, 5U, combo_pct);
-    }
-    else if (paused)
-    {
-        Bsp_Oled_FbDrawStr6x8At(2U, 42U, "Press both keys", false);
-    }
-    else
-    {
-        Bsp_Oled_FbDrawStr6x8At(2U, 28U, "UART: debug / dbg", false);
-        Bsp_Oled_FbDrawStr6x8At(2U, 42U, "K1+K2 hold -> Manual", false);
-    }
-    /* body_to_page6=true：正文最后一行 y=42 延伸至 page6（y=48~49），
-     * 进度条 y=50 完全在 page6，禁止 RowGap 清除该区域。 */
-#if APP_SERIAL_DEBUG_AUTO_ENTER_ON_BOOT
-    Draw_ScreenEndEx2("AUTO_ENTER=1", true);
-#else
-    Draw_ScreenEndEx2("K1+2:Man K3:UART", true);
-#endif
-}
-
-/** @brief 手动模式：选择串口 / 按键 / 返回 */
-static void Draw_ManualSelect(void)
-{
-    uint8_t n   = App_ManualSelect_GetItemCount();
-    uint8_t cur = App_ManualSelect_GetCursor();
-
-    /* 在标题栏(y0~10)和页脚(y56~63)之间按像素等距摆放 3 项。 */
-    {
-        const uint8_t item_y[3] = {15U, 29U, 43U};
-
-        Draw_ScreenBegin("Manual");
-        for (uint8_t i = 0U; i < n; i++)
-        {
-            Draw_ListRowY(item_y[i], App_ManualSelect_GetItemLabel(i), i == cur);
-        }
-        Draw_KeyFooter();
-    }
-}
-
-#define MANUAL_KEY_CELL_W (62U)
-
-/** @brief Key Ctrl 双列单元：仅光标所在格反白 */
-static void Draw_ManualKey_CellY(uint8_t y, uint8_t col, const char *name, bool on, bool focused, bool active)
-{
-    uint8_t x = (col == 0U) ? 0U : 66U;
-
-    if (active)
-    {
-        Bsp_Oled_FbFillRect(x, y, MANUAL_KEY_CELL_W, 8U, true);
-    }
-    snprintf(s_line, sizeof(s_line), "%s %s", name, on ? "ON" : "OFF");
-    Bsp_Oled_FbDrawChar6x8At((uint8_t)(x + 2U), y, focused ? '>' : ' ', active);
-    Bsp_Oled_FbDrawStr6x8At((uint8_t)(x + 10U), y, s_line, active);
-}
-
-/** @brief Pump 行（始终显示，全宽；仅选中时反白） */
-static void Draw_ManualKey_PumpRowY(uint8_t y, bool focused, bool active, uint8_t duty)
-{
-    if (active)
-    {
-        Bsp_Oled_FbFillRect(0U, y, 128U, 8U, true);
-    }
-    if (duty > 0U)
-    {
-        snprintf(s_line, sizeof(s_line), "Pump %u%%", (unsigned)duty);
-    }
-    else
-    {
-        (void)strncpy(s_line, "Pump", sizeof(s_line));
-        s_line[sizeof(s_line) - 1U] = '\0';
-    }
-    Bsp_Oled_FbDrawChar6x8At(4U, y, focused ? '>' : ' ', active);
-    Bsp_Oled_FbDrawStr6x8At(12U, y, s_line, active);
-}
-
-/** Key Ctrl：4 行在 y=11..55 可用区域内等距排布。 */
-#define KEY_CTRL_Y_PWR_V1  (13U)
-#define KEY_CTRL_Y_V2_V3   (24U)
-#define KEY_CTRL_Y_V4_RSV  (35U)
-#define KEY_CTRL_Y_PUMP    (46U)
-
-/** @brief 手动按键控制页（双列 + 加大行距 + Pump 常驻） */
-static void Draw_ManualKey(void)
-{
-    uint8_t cur  = App_ManualKey_GetCursor();
-    uint8_t duty = App_ManualKey_GetPumpDuty();
-    bool    item_active = App_ManualKey_IsItemActive();
-
-    Draw_ScreenBegin("Key Ctrl");
-
-    Draw_ManualKey_CellY(KEY_CTRL_Y_PWR_V1, 0U, "Pwr", App_ManualKey_IsRelayOn(0U), cur == 0U,
-                         item_active && (cur == 0U));
-    Draw_ManualKey_CellY(KEY_CTRL_Y_PWR_V1, 1U, "V1", App_ManualKey_IsRelayOn(1U), cur == 1U,
-                         item_active && (cur == 1U));
-    Draw_ManualKey_CellY(KEY_CTRL_Y_V2_V3, 0U, "V2", App_ManualKey_IsRelayOn(2U), cur == 2U,
-                         item_active && (cur == 2U));
-    Draw_ManualKey_CellY(KEY_CTRL_Y_V2_V3, 1U, "V3", App_ManualKey_IsRelayOn(3U), cur == 3U,
-                         item_active && (cur == 3U));
-    Draw_ManualKey_CellY(KEY_CTRL_Y_V4_RSV, 0U, "V4", App_ManualKey_IsRelayOn(4U), cur == 4U,
-                         item_active && (cur == 4U));
-    Draw_ManualKey_CellY(KEY_CTRL_Y_V4_RSV, 1U, "Rsv", App_ManualKey_IsRelayOn(5U), cur == 5U,
-                         item_active && (cur == 5U));
-    Draw_ManualKey_PumpRowY(KEY_CTRL_Y_PUMP, cur == 6U, item_active && (cur == 6U), duty);
-
-    Draw_KeyFooter();
+    Draw_ScreenEndEx2("K1+K3: Menu", true);
 }
 
 /** @brief 串口调试 / 按键测试页：K1~K4 实时按下状态 */
@@ -426,7 +357,7 @@ static void Draw_SerialDebug(void)
         return;
     }
 
-    Draw_ScreenBegin("Serial Debug");
+    Draw_ScreenBegin("SERIAL TEST");
 
     if (ui_cmd[0] == '\0')
     {
@@ -466,97 +397,75 @@ static void Draw_SerialDebug(void)
     Draw_ScreenEndEx("K4L 2s: exit debug");
 }
 
-/** @brief SELFTEST 页：自检文案 + 固定 60% 进度条（仅用作视觉反馈） */
-static void Draw_Selftest(void)
-{
-    Bsp_Oled_FbClear();
-    Draw_TitleBar("Selftest");
-    Bsp_Oled_FbDrawStr6x8(2U, DISP_PAGE_BODY0, "Relays click test", false);
-    Draw_ProgressBar(2U, 40U, 124U, 8U, 60U);
-}
-
-/**
- * @brief   IDLE_3S 页：大数字倒计时 + 操作提示
- * @note    倒计时秒数 = ceil((idle_seconds*1000 - elapsed)/1000)；
- *          最少显示 1，避免最后一帧一闪而过看到 0。
- */
-static void Draw_Idle3s(void)
-{
-    const App_Config *cfg      = App_Config_Get();
-    uint32_t          elapsed  = Bsp_Tick_ElapsedMs(App_Main_Fsm_EnterMs());
-    uint32_t          total    = (uint32_t)cfg->idle_seconds * 1000U;
-    uint32_t          remain   = (elapsed >= total) ? 0U : (total - elapsed);
-    uint8_t           remain_s = (uint8_t)((remain + 999U) / 1000U);
-    if (remain_s == 0U)
-        remain_s = 1U;
-
-    Draw_ScreenBegin("Idle");
-
-    /* 大数字倒计时 */
-    char d = (char)('0' + (remain_s % 10U));
-    Bsp_Oled_FbDrawBigDigit(56U, DISP_CONTENT_ROW(0U), d);
-
-    Draw_ScreenEndEx("K3:menu  K4:start now");
-}
-
-/**
- * @brief   AUTO_RUN 页：当前路 / 总路 + 已用秒 + 总进度条
- */
+/** @brief AUTO_RUN 页：当前路 + 已用秒 + 总进度 */
 static void Draw_AutoRun(void)
 {
     const App_Config *cfg  = App_Config_Get();
-    uint8_t           zone = App_Main_Fsm_CurrentZone(); /* 1..4 */
+    uint8_t           zone = App_Main_Fsm_CurrentZone();
 
-    snprintf(s_line, sizeof(s_line), "AUTO Z%u/%u", zone, FM_CHANNEL_NUM);
+    snprintf(s_line, sizeof(s_line), "AUTO Z%u", zone);
     Draw_ScreenBegin(s_line);
 
-    /* 当前阶梯条 */
-    /* 简化：从 App_Pump_Fsm 暴露的 ctx 无法跨模块访问，
-     * 这里基于 Config + 总 step 占空比 + 已用时间近似显示。
-     * 真实实现可以在 App_Main_Fsm 中导出更详细的状态。 */
     snprintf(s_line, sizeof(s_line), "Steps: %u", cfg->step_count);
     Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(0U), s_line, false);
 
     uint32_t auto_elapsed_s = Bsp_Tick_ElapsedMs(App_Main_Fsm_AutoRunStartMs()) / 1000U;
     snprintf(s_line, sizeof(s_line), "Elapsed: %lus", (unsigned long)auto_elapsed_s);
     Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(1U), s_line, false);
+    snprintf(s_line, sizeof(s_line), "Pump: %u%%", (unsigned)Bsp_Pump_Pwm_GetDutyPercent());
+    Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(2U), s_line, false);
 
-    uint8_t percent = (cfg->total_timeout_s == 0U) ? 0U : (uint8_t)((auto_elapsed_s * 100U) / cfg->total_timeout_s);
+    uint8_t percent = (cfg->total_timeout_s == 0U) ? 0U
+                                                    : (uint8_t)((auto_elapsed_s * 100U) / cfg->total_timeout_s);
     if (percent > 100U)
     {
         percent = 100U;
     }
     Draw_ProgressBar(2U, 40U, 124U, 6U, percent);
-
-    Draw_ScreenEndEx("K3:stop   K4:menu");
+    Draw_ScreenEndEx("K4: E-STOP");
 }
 
-#define DISP_MENU_VISIBLE_ROWS (3U)
-
-/**
- * @brief   MENU/Main 页：最多 3 行，行距 2 page，仅当前项反白
- */
-static void Draw_MenuMain(void)
+static void Draw_Menu_ScrollList(const char *title, const char *footer)
 {
-    Draw_ScreenBegin("Menu");
     uint8_t cursor = App_Menu_GetCursor();
     uint8_t n      = App_Menu_GetItemCount();
-    uint8_t start  = (cursor < DISP_MENU_VISIBLE_ROWS) ? 0U : (uint8_t)(cursor - (DISP_MENU_VISIBLE_ROWS - 1U));
+    uint8_t start  = (cursor < DISP_MENU_VISIBLE_ROWS) ? 0U
+                                                     : (uint8_t)(cursor - (DISP_MENU_VISIBLE_ROWS - 1U));
+
+    Draw_ScreenBegin(title);
     for (uint8_t i = 0U; (i < DISP_MENU_VISIBLE_ROWS) && ((start + i) < n); i++)
     {
         uint8_t item = (uint8_t)(start + i);
         Draw_ListRow(DISP_CONTENT_ROW(i), App_Menu_GetItemLabel(item), item == cursor);
     }
-    Draw_ScreenEnd();
+    if ((footer != NULL) && (footer[0] != '\0'))
+    {
+        Draw_ScreenEndEx(footer);
+    }
+    else
+    {
+        Draw_ScreenEnd();
+    }
 }
 
-/** @brief MENU/Params 页：参数名 + 当前值 */
+static void Draw_MenuMain(void)
+{
+    Draw_Menu_ScrollList("MAIN", "K1v K2^ K3OK");
+}
+
+static void Draw_MenuSettings(void)
+{
+    Draw_Menu_ScrollList("SETTINGS", "K4: Back");
+}
+
 static void Draw_MenuParams(void)
 {
-    Draw_ScreenBegin("Params");
     uint8_t cursor = App_Menu_GetCursor();
     uint8_t n      = App_Menu_GetItemCount();
-    uint8_t start  = (cursor < DISP_MENU_VISIBLE_ROWS) ? 0U : (uint8_t)(cursor - (DISP_MENU_VISIBLE_ROWS - 1U));
+    uint8_t start  = (cursor < DISP_MENU_VISIBLE_ROWS) ? 0U
+                                                     : (uint8_t)(cursor - (DISP_MENU_VISIBLE_ROWS - 1U));
+
+    Draw_ScreenBegin("PARAMS");
     for (uint8_t i = 0U; (i < DISP_MENU_VISIBLE_ROWS) && ((start + i) < n); i++)
     {
         uint8_t     item = (uint8_t)(start + i);
@@ -564,94 +473,174 @@ static void Draw_MenuParams(void)
         const char *name = App_Menu_GetItemLabel(item);
         int32_t     v    = 0;
         (void)App_Config_GetField(name, &v);
-        snprintf(s_line, sizeof(s_line), "%-9s %ld", name, (long)v);
+        snprintf(s_line, sizeof(s_line), "%-7s %ld", name, (long)v);
         Draw_ListRow(DISP_CONTENT_ROW(i), s_line, sel);
     }
-    Draw_ScreenEnd();
+    Draw_ScreenEndEx("K3:Edit K4:Back");
 }
 
-/** @brief MENU/ParamEdit 页：单字段编辑 */
 static void Draw_MenuParamEdit(void)
 {
-    Draw_ScreenBegin("Edit Param");
-    snprintf(s_line, sizeof(s_line), "Field: %s", App_Menu_GetEditFieldName());
-    Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(0U), s_line, false);
-    snprintf(s_line, sizeof(s_line), "Value: %ld", (long)App_Menu_GetEditValue());
-    Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(1U), s_line, false);
-    Draw_ScreenEnd();
+    const char *name = App_Menu_GetEditFieldName();
+
+    Draw_ScreenBegin("EDIT");
+    if (strcmp(name, "ch_en") == 0)
+    {
+        uint8_t ch  = App_Menu_GetChEnEditChannel();
+        int32_t val = App_Menu_GetEditValue();
+        bool    on  = ((val & (int32_t)(1UL << ch)) != 0);
+
+        snprintf(s_line, sizeof(s_line), "Z%u %s", (unsigned)(ch + 1U), on ? "ON" : "OFF");
+        Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(0U), s_line, false);
+        snprintf(s_line, sizeof(s_line), "Mask 0x%02lX", (long)val);
+        Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(1U), s_line, false);
+        Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(2U), "K1/K2: ch", false);
+        Draw_ScreenEndEx("K3:tog K3L:save");
+    }
+    else
+    {
+        snprintf(s_line, sizeof(s_line), "%s", name);
+        Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(0U), s_line, false);
+        snprintf(s_line, sizeof(s_line), "Val: %ld", (long)App_Menu_GetEditValue());
+        Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(1U), s_line, false);
+        Draw_ScreenEndEx("K3:save K4:abort");
+    }
 }
 
-/** @brief MENU/Manual 页：手动测试条目列表 */
-static void Draw_MenuManual(void)
+static void Draw_MenuLocalTest(void)
 {
-    Draw_ScreenBegin("Manual Test");
+    Draw_Menu_ScrollList("LOCAL TEST", "K4: Back");
+}
+
+static void Draw_ScreenPattern(uint8_t pat)
+{
+    uint8_t x;
+    uint8_t y;
+
+    Bsp_Oled_FbClear();
+    switch (pat)
+    {
+        case 0U:
+            Bsp_Oled_FbFill(true);
+            break;
+        case 1U:
+            Bsp_Oled_FbClear();
+            break;
+        case 2U:
+            for (y = 0U; y < 64U; y++)
+            {
+                for (x = 0U; x < 128U; x++)
+                {
+                    Bsp_Oled_FbDrawPixel(x, y, (((x / 8U) + (y / 8U)) & 1U) != 0U);
+                }
+            }
+            break;
+        case 3U:
+            for (y = 0U; y < 64U; y++)
+            {
+                Bsp_Oled_FbDrawHLine(0U, y, 128U, ((y / 4U) & 1U) != 0U);
+            }
+            break;
+        case 4U:
+            for (x = 0U; x < 128U; x++)
+            {
+                Bsp_Oled_FbDrawHLine(x, 0U, 1U, ((x / 4U) & 1U) != 0U);
+            }
+            for (y = 1U; y < 64U; y++)
+            {
+                for (x = 0U; x < 128U; x++)
+                {
+                    Bsp_Oled_FbDrawPixel(x, y, ((x / 4U) & 1U) != 0U);
+                }
+            }
+            break;
+        default:
+            Bsp_Oled_FbDrawRect(0U, 0U, 128U, 64U, true);
+            Draw_TitleBar("SCREEN TEST");
+            break;
+    }
+}
+
+static void Draw_MenuScreenTest(void)
+{
+    Draw_ScreenPattern(App_Menu_GetScreenPattern());
+    Draw_KeyFooterEx("K4:Back K3:Next");
+}
+
+static void Draw_MenuKeyTest(void)
+{
+    static const char *const s_labels[BSP_KEY_NUM] = {"K1", "K2", "K3", "K4"};
+    uint8_t                  mask                  = App_Menu_GetKeyTestMask();
+
+    Draw_ScreenBegin("KEY TEST");
+    for (uint32_t i = 0U; i < (uint32_t)BSP_KEY_NUM; i++)
+    {
+        bool pressed = ((mask & (uint8_t)(1U << i)) != 0U);
+        snprintf(s_line, sizeof(s_line), "%s %s", s_labels[i], pressed ? "ON" : "--");
+        Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW((uint8_t)i), s_line, pressed);
+    }
+    Draw_ScreenEndEx("Idle 5s=Back");
+}
+
+static void Draw_MenuWaterTest(void)
+{
     uint8_t cursor = App_Menu_GetCursor();
     uint8_t n      = App_Menu_GetItemCount();
-    for (uint8_t i = 0U; (i < DISP_MENU_VISIBLE_ROWS) && (i < n); i++)
+    uint8_t start  = (cursor < DISP_MENU_VISIBLE_ROWS) ? 0U
+                                                     : (uint8_t)(cursor - (DISP_MENU_VISIBLE_ROWS - 1U));
+
+    Draw_ScreenBegin("WATER TEST");
+    for (uint8_t i = 0U; (i < DISP_MENU_VISIBLE_ROWS) && ((start + i) < n); i++)
     {
-        Draw_ListRow(DISP_CONTENT_ROW(i), App_Menu_GetItemLabel(i), i == cursor);
+        uint8_t item = (uint8_t)(start + i);
+        bool    sel  = (item == cursor);
+
+        if (item < 5U)
+        {
+            Bsp_Valve_Channel ch = (Bsp_Valve_Channel)((uint32_t)BSP_VALVE_Z1 + (uint32_t)item);
+            snprintf(s_line, sizeof(s_line), "Z%u %s", (unsigned)(item + 1U),
+                     Bsp_Valve_Get(ch) ? "ON" : "OFF");
+        }
+        else
+        {
+            if (App_Menu_IsPumpEditing())
+            {
+                snprintf(s_line, sizeof(s_line), "PUMP %u%% *", (unsigned)App_Menu_GetPumpPercent());
+            }
+            else
+            {
+                snprintf(s_line, sizeof(s_line), "PUMP %u%%", (unsigned)App_Menu_GetPumpPercent());
+            }
+        }
+        Draw_ListRow(DISP_CONTENT_ROW(i), s_line, sel);
     }
-    Draw_ScreenEnd();
+    Draw_ScreenEndEx("K3:Sel K4:Back");
 }
 
-/** @brief MENU/Info 页：固件版本 / Uptime / 配置来源 / 写入计数 */
-static void Draw_MenuInfo(void)
-{
-    Draw_ScreenBegin("System Info");
-    Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(0U), FM_FIRMWARE_VERSION_STR, false);
-    snprintf(s_line, sizeof(s_line), "Uptime: %lus", (unsigned long)(Bsp_Tick_GetMs() / 1000U));
-    Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(1U), s_line, false);
-
-    App_Config_Source src     = App_Config_GetSource();
-    const char       *src_str = (src == APP_CONFIG_LOADED_BANK_A) ? "Bank A"
-                              : (src == APP_CONFIG_LOADED_BANK_B) ? "Bank B"
-                                                                  : "Factory";
-    snprintf(s_line, sizeof(s_line), "Cfg src: %s", src_str);
-    Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(2U), s_line, false);
-
-    snprintf(s_line, sizeof(s_line), "Updates: %lu", (unsigned long)App_Config_Get()->update_count);
-    Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(3U), s_line, false);
-
-    Draw_ScreenEnd();
-}
-
-/** @brief MENU/FactoryReset 页：长按 K3 3s 确认 */
-static void Draw_MenuFactoryReset(void)
-{
-    Draw_ScreenBegin("Factory Reset");
-    Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(0U), "Reset ALL params?", false);
-    Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(1U), "Hold K3 3s = YES", false);
-    Draw_ScreenEndEx("K4: cancel");
-}
-
-/** @brief DONE 页：等待断电 */
+/** @brief DONE 页：正常完成或紧急停止 */
 static void Draw_Done(void)
 {
-    Bsp_Oled_FbClear();
-    Draw_TitleBar("Done");
-    Bsp_Oled_FbDrawStr6x8(2U, 3U, "Task complete.", false);
-    Bsp_Oled_FbDrawStr6x8(2U, 5U, "Wait for plug off.", false);
+    Draw_ScreenBegin(App_Main_Fsm_IsWateringStopped() ? "STOPPED" : "DONE");
+    if (App_Main_Fsm_IsWateringStopped())
+    {
+        Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(0U), "Watering stopped", false);
+    }
+    else
+    {
+        Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(0U), "Watering OK", false);
+    }
+    Draw_ScreenEndEx("K4: Main Menu");
 }
 
-/** @brief SLEEP 页：等待米家插座下次定时上电 */
-static void Draw_Sleep(void)
-{
-    Bsp_Oled_FbClear();
-    Draw_TitleBar("Sleep");
-    Bsp_Oled_FbDrawStr6x8(2U, 3U, "Idle. Waiting for", false);
-    Bsp_Oled_FbDrawStr6x8(2U, 4U, "scheduled power-off.", false);
-}
-
-/** @brief ERROR 页：错误码 + 输出已关 + 长按 K3 复位 */
+/** @brief ERROR 页：错误码 + 输出已关 */
 static void Draw_Error(void)
 {
-    Bsp_Oled_FbClear();
-    Draw_TitleBar("ERROR");
+    Draw_ScreenBegin("ERROR");
     Fm_ErrorCode err = App_Main_Fsm_LastError();
     snprintf(s_line, sizeof(s_line), "Code: 0x%02X", (unsigned)err);
-    Bsp_Oled_FbDrawStr6x8(2U, DISP_PAGE_BODY0, s_line, false);
-    Bsp_Oled_FbDrawStr6x8(2U, 4U, "All outputs OFF.", false);
-    Bsp_Oled_FbDrawStr6x8(2U, 6U, "K3 HOLD: reset MCU", false);
+    Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(0U), s_line, false);
+    Bsp_Oled_FbDrawStr6x8(2U, DISP_CONTENT_ROW(1U), "All outputs OFF", false);
+    Draw_ScreenEndEx("K4: Main Menu");
 }
 
 static App_SerialDebug_UiState s_last_serial_ui = APP_SERIAL_DEBUG_UI_IDLE;
@@ -668,20 +657,26 @@ static void Display_Render(void)
             case APP_MENU_PAGE_MAIN:
                 Draw_MenuMain();
                 break;
+            case APP_MENU_PAGE_SETTINGS:
+                Draw_MenuSettings();
+                break;
             case APP_MENU_PAGE_PARAMS:
                 Draw_MenuParams();
                 break;
             case APP_MENU_PAGE_PARAM_EDIT:
                 Draw_MenuParamEdit();
                 break;
-            case APP_MENU_PAGE_MANUAL:
-                Draw_MenuManual();
+            case APP_MENU_PAGE_LOCAL_TEST:
+                Draw_MenuLocalTest();
                 break;
-            case APP_MENU_PAGE_INFO:
-                Draw_MenuInfo();
+            case APP_MENU_PAGE_SCREEN_TEST:
+                Draw_MenuScreenTest();
                 break;
-            case APP_MENU_PAGE_FACTORY_RESET:
-                Draw_MenuFactoryReset();
+            case APP_MENU_PAGE_KEY_TEST:
+                Draw_MenuKeyTest();
+                break;
+            case APP_MENU_PAGE_WATER_TEST:
+                Draw_MenuWaterTest();
                 break;
             default:
                 Draw_MenuMain();
@@ -692,26 +687,14 @@ static void Display_Render(void)
 
     switch (st)
     {
-        case APP_MAIN_FSM_STATE_SERIAL_WAIT:
-            Draw_SerialWait();
+        case APP_MAIN_FSM_STATE_LOGO:
+            Draw_Logo();
+            break;
+        case APP_MAIN_FSM_STATE_IDLE:
+            Draw_Idle();
             break;
         case APP_MAIN_FSM_STATE_SERIAL_DEBUG:
             Draw_SerialDebug();
-            break;
-        case APP_MAIN_FSM_STATE_MANUAL_SELECT:
-            Draw_ManualSelect();
-            break;
-        case APP_MAIN_FSM_STATE_MANUAL_KEY:
-            Draw_ManualKey();
-            break;
-        case APP_MAIN_FSM_STATE_BOOT:
-            Draw_Boot();
-            break;
-        case APP_MAIN_FSM_STATE_SELFTEST:
-            Draw_Selftest();
-            break;
-        case APP_MAIN_FSM_STATE_IDLE_3S:
-            Draw_Idle3s();
             break;
         case APP_MAIN_FSM_STATE_AUTO_RUN:
             Draw_AutoRun();
@@ -719,14 +702,11 @@ static void Display_Render(void)
         case APP_MAIN_FSM_STATE_DONE:
             Draw_Done();
             break;
-        case APP_MAIN_FSM_STATE_SLEEP:
-            Draw_Sleep();
-            break;
         case APP_MAIN_FSM_STATE_ERROR:
             Draw_Error();
             break;
         default:
-            Draw_Boot();
+            Draw_Logo();
             break;
     }
 }
@@ -763,9 +743,8 @@ void App_Display_FlushNow(void)
 void App_Display_Tick(void)
 {
     App_Main_FsmState     st              = App_Main_Fsm_GetState();
-    bool                  force_refresh   =
-        (st == APP_MAIN_FSM_STATE_SERIAL_WAIT) || (st == APP_MAIN_FSM_STATE_MANUAL_SELECT) ||
-        (st == APP_MAIN_FSM_STATE_MANUAL_KEY) || (st == APP_MAIN_FSM_STATE_MENU);
+    bool force_refresh = (st == APP_MAIN_FSM_STATE_LOGO) || (st == APP_MAIN_FSM_STATE_IDLE) ||
+                         (st == APP_MAIN_FSM_STATE_AUTO_RUN) || (st == APP_MAIN_FSM_STATE_MENU);
     bool                  state_changed   = (st != s_last_fsm_state);
     App_SerialDebug_UiState serial_ui       = APP_SERIAL_DEBUG_UI_IDLE;
     bool                  serial_ui_changed = false;

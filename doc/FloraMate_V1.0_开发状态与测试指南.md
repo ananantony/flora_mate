@@ -1,6 +1,7 @@
 # FloraMate V1.0 — 开发状态与测试实践指南
 
-> 文档版本：1.0.0 · 日期：2026-05-15 · 作者：tonymeng
+> 文档版本：1.1.0 · 日期：2026-09-10 · 作者：tonymeng  
+> **HMI V2.0 更新（2026-09-10）：** 产品路径已改为 Logo → Idle → 主界面 / 自动浇水。操作与手测清单以 [`上电运行分支与操作逻辑_V2.0.md`](上电运行分支与操作逻辑_V2.0.md) 为准；下文 §2~§4 部分描述仍为 V1.0 架构，已标注差异处。
 
 ---
 
@@ -37,7 +38,7 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 | **USART 日志** | `bsp_usart_log.c/h` | USART1 115200 8N1；非阻塞环形缓冲 TX；`TxFlush` 中断推进 | ✅ 完成 |
 | **阀门** | `bsp_valve.c/h` | 5 路阀 Z1~Z5（PA1~PA5）AO4407A P-MOS 高边，高电平有效；干转互锁判定 `AnyOn`；逐路自检 | ✅ 完成 |
 | **水泵 PWM** | `bsp_pump_pwm.c/h` | TIM2-CH1（PA0）100 Hz，1000 级分辨率；`SetDutyPercent` / `Stop`；duty>0 需任一阀已开 | ✅ 完成 |
-| **按键** | `bsp_key.c/h` | 4 键（K1=PA6/K2=PA7/K3=PB0/K4=PB1）消抖 20 ms；短按 / 长按 / 超长按阈值可配；事件回调注入 | ✅ 完成 |
+| **按键** | `bsp_key.c/h` | 4 键（**Top V2.0：K1~K4 = PC0~PC3**）消抖 20 ms；短按 / 长按 / 超长按阈值可配；事件回调注入 | ✅ 完成 |
 | **OLED** | `bsp_oled.c/h` + `bsp_oled_font.h` | 1.3" 128×64 SSD1306/1315 I2C；6×8 + 16×16 字模 | ✅ 完成 |
 | **EEPROM** | `bsp_eeprom.c/h` | AT24C08C I2C（1 KB，16 B/页）；字节 / 页随机读写；在线探测 `IsOnline` | ✅ 完成 |
 
@@ -56,9 +57,9 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 | **日志** | `app_log.c/h` + `app_log_ring_buffer.c/h` + `app_log_types.h` | MPSC 环形缓冲；6 级过滤（FATAL–VERBOSE）；紧急模式直传；限速宏；异步 UART 消费 | ✅ 完成 |
 | **事件队列** | `app_event.c/h` | 8 槽 FIFO；`PostKey` 回调（供 BSP 按键调用）；`Pop`；`APP_EVENT_KEY_*` 枚举（SHORT / LONG / HOLD） | ✅ 完成 |
 | **配置存储** | `app_config.c/h` | AT24C08C 双 Bank 轮换（仅配置，日志不入 EEPROM）；Bank header + payload 各一 CRC-16；版本管理；`SetField` / `GetField` / `Dump` / `FactoryReset` | ✅ 完成 |
-| **显示调度** | `app_display.c/h` | 100 ms 节流；按主 FSM 状态切换页面（BOOT / SELFTEST / IDLE 倒计时 / AUTO_RUN 进度 / MENU 委托 / DONE / ERROR / SLEEP） | ✅ 完成 |
-| **调试菜单** | `app_menu.c/h` | 主菜单 / 参数列表 / 单参数编辑 / 手动测试（阀 + PWM）/ 系统信息 / 出厂复位；K1–K4 完整映射 | ✅ 完成 |
-| **主状态机** | `app_main_fsm.c/h` | 7 态 FSM：BOOT → SELFTEST → IDLE_3S → AUTO_RUN → DONE → SLEEP / ERROR；心跳 LED；总任务超时保护 | ✅ 完成 |
+| **显示调度** | `app_display.c/h` | 100 ms 节流；按主 FSM 切换页面（**LOGO / IDLE / AUTO_RUN / MENU / SERIAL_DEBUG / DONE / ERROR**） | ✅ V2.0 |
+| **产品菜单** | `app_menu.c/h` | **V2.0：** 主界面 2 项、设置 3 项、本地测试 3 项、参数单项保存；K1–K4 完整映射 | ✅ V2.0 |
+| **主状态机** | `app_main_fsm.c/h` | **V2.0：** LOGO → IDLE(5s) → AUTO_RUN / MENU / SERIAL_DEBUG → DONE / ERROR；K4 紧急停；心跳 LED | ✅ V2.0 |
 | **水泵子 FSM** | `app_pump_fsm.c/h` | 单路 9 态 FSM：IDLE → INIT → OPEN_MAIN → STEP（8 档）→ RAMP_DOWN → CLOSE_MAIN → CLOSE_VALVE → GAP → DONE / ERROR；PWM 阶梯执行 | ✅ 完成 |
 | **应用装配** | `app_init.c/h` | `App_Init`（6 步顺序初始化）+ `App_Loop`（永不返回主循环） | ✅ 完成 |
 
@@ -82,7 +83,7 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 | 功能 | 优先级 | 说明 |
 |------|--------|------|
 | **看门狗（IWDG）** | 高 | 错误码 `FM_ERR_020_WATCHDOG` 已占位；需在 `App_Loop` 内定期喂狗 |
-| **串口命令行（CLI）** | 已完成 | `app_serial_debug`：3s 等待窗内 `debug` 进调试，否则正常 BOOT 流程；`AUTO_ENTER` 宏可上电直进调试 |
+| **串口命令行（CLI）** | 已完成 | `app_serial_debug`：Idle 5s 或设置→Serial Test 进调试；`AUTO_ENTER` 宏可上电直进调试 |
 | **定时自动浇灌** | 中 | 需外挂 RTC（MCU 内置 RTC 或外置 DS3231）+ 配置时间表；EEPROM 预留空间足够 |
 | **单路超时精细控制** | 低 | 目前靠总超时兜底；可在子 FSM Tick 内加 `per_channel_timeout_s` 判断 |
 | **水流传感器** | 低 | 架构支持，硬件未焊接；可接预留 GPIO 外部中断计脉冲（注意避开已用引脚） |
@@ -98,15 +99,15 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 ```
 □ 确认 3.3 V / 5 V 双电源正常，无异常发热
 □ ST-Link 连接成功，STM32CubeIDE Debug 模式下单步走 App_Init 前半段
-□ OLED 显示 "Serial Wait" 与 `debug in Ns` 倒计时
+□ OLED 显示 Logo（SW/HW 版本行）→ Idle 5s 倒计时
 □ USART1（PA9 TX = 115200 8N1）收到日志：
-    [xxx][I][FloraMate] [App_Init,73] ==== FloraMate V1.0 ====
-    [xxx][I][FloraMate] [App_Init,74] Build: May 15 2026 ...
-    [xxx][I][FloraMate] [App_Init,95] init done. eeprom=1 oled=1
-□ 等待窗内串口每秒输出 `[I] hb ... wait_remain_ms=...`；进入调试后无心跳
-□ 发送 `debug` 后 OLED 显示当前命令与 OK/ERR，串口打印 help
-□ 不发送 debug、等待 3s 后应进入 BOOT/自检/倒计时/自动浇灌流程
-□ 心跳 LED（PC13）以 ~500 ms 闪烁
+    [xxx][I][FloraMate] [App_Init,...] ==== FloraMate V1.0 ====
+    [xxx][I][FloraMate] [App_Init,...] init done. eeprom=1 oled=1
+    [xxx][I][FloraMate] sys fsm: init LOGO
+□ Idle 期间串口每秒 `[I] hb ... wait_remain_ms=...`；进入调试后无心跳
+□ Idle 发 `debug` → OLED 显示命令与 OK/ERR，串口打印 help
+□ 不按键、Idle 超时后进入 AUTO_RUN 自动浇灌
+□ 心跳 LED（Top 板原理图 PC12；当前 Cube 配置见 Core/Inc/main.h）~500 ms 闪烁
 ```
 
 ### 4.2 BSP 单模块验证
@@ -150,7 +151,7 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 #### 4.2.4 按键
 
 ```
-  □ SYS_SERIAL_WAIT / SYS_SERIAL_DEBUG 下按键扫描暂停，按 K1~K4 不应改变状态
+  □ LOGO / IDLE / SERIAL_DEBUG 下菜单键无效（`App_Main_Fsm_KeyInputEnabled`）
   □ `valve open 1` + `valve open 2` 可同时 on；`valve close` 全部释放
 恢复菜单/自动流程后再按原 IDLE / DONE / ERROR 映射验证按键
 ```
@@ -169,12 +170,12 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 
 ### 4.3 系统级端到端测试
 
-#### 4.3.1 标准浇灌流程（当前阶段暂停）
+#### 4.3.1 标准浇灌流程（V2.0 产品路径）
 
 ```
 前提：至少 channel_enable bit0 = 1（Z1 开启），step_count ≥ 1，step_duty[0] > 0
-步骤（恢复自动流程后执行）：
-  1. 上电 → 等待 IDLE 倒计时结束（或 K1 长按跳过）
+步骤：
+  1. 上电 → Logo → 等待 Idle 5s 倒计时结束（或 Idle 期间 K1+K3 2s 进主界面后选 Auto Water）
   2. 观察 AUTO_RUN 进度：
      □ OLED 显示 "Zone 1 / Step X / Duty Y%"
      □ 当前路阀 Z_i 先开，约 200 ms 后水泵 PWM 起调
@@ -183,18 +184,18 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
      □ PWM 先 RAMP_DOWN → 停泵（PWM=0）→ 关阀 → 路间静默
      □ 继续下一路（若已使能）
   4. 全部完成后：
-     □ 进入 DONE 页（"All Done!"），2 s 后转 SLEEP
+     □ 进入 DONE 页（"All Done!"），**K4 回主界面**
      □ 所有阀确认为 OFF 状态（万用表/目视指示灯）
 ```
 
-#### 4.3.2 停止按钮测试
+#### 4.3.2 紧急停止测试（V2.0）
 
 ```
-步骤：AUTO_RUN 进行中 → 短按 K3
+步骤：AUTO_RUN 进行中 → 按 K4（短按/长按均可）
 验证：
-  □ 日志 "auto run: user STOP (K3)"
-  □ 所有阀立即 OFF（App_Pump_Fsm_Abort 调用 Bsp_Valve_ForceAllOff）
-  □ 系统进入 DONE 后转 SLEEP
+  □ 日志 "auto run: STOPPED by K4"
+  □ 所有阀立即 OFF（App_Pump_Fsm_Abort）
+  □ 系统进入 DONE（Stopped），再按 K4 回主界面
   □ 水流在 < 500 ms 内停止（阀门响应时间）
 ```
 
@@ -228,12 +229,11 @@ MCU：STM32F401RCT6 @ 84 MHz，256 KB Flash，64 KB SRAM，LQFP64
 
 ```
 观察启动序列（关键日志示例）：
-[0][I][FloraMate] [App_Init,73] ==== FloraMate V1.0 ====
-[1][I][FloraMate] [App_Init,74] Build: May 15 2026 16:00:00
-[2][I][FloraMate] [App_Config_Init,...] config loaded from bank A (seq=3)
-[3][I][FloraMate] [App_Init,95] init done. eeprom=1 oled=1
-[I] boot: send debug within 3s for serial debug
-[I] hb uptime_ms=1000 wait_remain_ms=2000
+[0][I][FloraMate] [App_Init,...] ==== FloraMate V1.0 ====
+[1][I][FloraMate] [App_Config_Init,...] config loaded from bank A (seq=3)
+[2][I][FloraMate] [App_Init,...] init done. eeprom=1 oled=1
+[3][I][FloraMate] sys fsm: init LOGO
+[I] hb uptime_ms=1000 wait_remain_ms=4000
 debug
 [I] serial debug active (no hb)
 ```
@@ -308,10 +308,10 @@ valve close
 | **浇灌期间不可断电** | V1.0 无断电续浇逻辑；若中途断电，重启后会重新从第一路开始 |
 | **EEPROM 寿命** | AT24C08C 典型写寿命 1,000,000 次；双 Bank + `update_count` 统计；仅低频配置写入，寿命非瓶颈 |
 | **看门狗未启用** | V1.0 无 IWDG；软件死锁时需手动断电复位，**待阶段 2 修复** |
-| **上电 3s 调试窗** | 默认 3s 内可发 `debug` 联调，超时走正常自动浇灌；`AUTO_ENTER=1` 可常开调试 |
+| **Idle 5s 串口窗** | Logo 后 Idle 5s 内可发 `debug`；超时自动浇水；Idle 期间 K1+K3 2s 进主界面；`AUTO_ENTER=1` 可常开调试 |
 | **备用阀 Z5（PA5）** | 通道已定义并可驱动，业务层暂未编排（与 Z1~Z4 等价） |
-| **K1 / K2 运行中无效** | AUTO_RUN 期间 K1（跳路）、K2（暂停）仅记录日志，**V1.0 预留** |
-| **SLEEP 不省电** | 进入 SLEEP 后 CPU 仍全速运行；**阶段 2 加 `__WFI`** |
+| **K4 紧急停止** | AUTO_RUN 期间 K4 立即停止并进入 DONE(Stopped) |
+| **SLEEP 已移除** | V2.0 产品路径无 SLEEP 态；完成页等待 K4 回主界面 |
 | **单路最大占空比 95%** | `FM_PUMP_DUTY_MAX_PERCENT = 95`，硬限，不允许 100%（过热保护） |
 | **总任务硬限 600 s** | `FM_TOTAL_TASK_HARD_LIMIT_S = 600`，代码层不允许 EEPROM 配置覆盖 |
 

@@ -3,18 +3,10 @@
  * @Author       : tonymeng
  * @Date         : 2026-05-15 11:30:00
  * @LastEditors  : tonymeng0910@gmail.com
- * @LastEditTime : 2026-05-15 14:50:00
- * @Description  : 调试菜单接口（主菜单 / 参数编辑 / 手动测试 / 系统信息）
+ * @LastEditTime : 2026-09-10 12:10:00
+ * @Description  : HMI V2.0 菜单接口（主界面 / 设置 / 参数 / 本地测试）
  *
  * Copyright (c) 2026 by tony.meng, All Rights Reserved.
- *
- *   _________________________________________________________________________
- *  | Date       | Version | Author      |  Description                       |
- *  |=========================================================================|
- *  |            |         |             |                                    |
- *  |-------------------------------------------------------------------------|
- *  |            |         |             |                                    |
- *  |-------------------------------------------------------------------------|
  */
 #ifndef APP_MENU_H
 #define APP_MENU_H
@@ -30,94 +22,63 @@
 typedef enum
 {
     APP_MENU_ACTION_NONE = 0,       /**< 留在菜单                 */
-    APP_MENU_ACTION_START_WATER,    /**< 主菜单选"立即开始"        */
-    APP_MENU_ACTION_RETURN_TO_AUTO, /**< 退出菜单回到 AUTO_RUN     */
-    APP_MENU_ACTION_GOTO_SLEEP      /**< 进入 SLEEP（保留）         */
+    APP_MENU_ACTION_START_WATER,    /**< 主界面选 Auto Water      */
+    APP_MENU_ACTION_ENTER_SERIAL,   /**< 设置选 Serial Test       */
+    APP_MENU_ACTION_RETURN_TO_AUTO, /**< 保留：回 AUTO_RUN        */
+    APP_MENU_ACTION_GOTO_SLEEP      /**< 保留：进休眠             */
 } App_Menu_Action;
 
 /**
- * @brief   菜单页面索引
+ * @brief   菜单页面索引（HMI V2.0）
  */
 typedef enum
 {
-    APP_MENU_PAGE_MAIN = 0,     /**< 主菜单                   */
-    APP_MENU_PAGE_PARAMS,       /**< 参数列表                  */
-    APP_MENU_PAGE_PARAM_EDIT,   /**< 单参数编辑                */
-    APP_MENU_PAGE_MANUAL,       /**< 手动测试                  */
-    APP_MENU_PAGE_INFO,         /**< 系统信息                  */
-    APP_MENU_PAGE_FACTORY_RESET /**< 恢复出厂确认页            */
+    APP_MENU_PAGE_MAIN = 0,    /**< 主界面：Auto Water / Settings */
+    APP_MENU_PAGE_SETTINGS,    /**< 设置：Params / Local / Serial */
+    APP_MENU_PAGE_PARAMS,      /**< 参数列表                       */
+    APP_MENU_PAGE_PARAM_EDIT,  /**< 单参数编辑                     */
+    APP_MENU_PAGE_LOCAL_TEST,  /**< 本地测试子菜单                 */
+    APP_MENU_PAGE_SCREEN_TEST, /**< 屏幕图案测试                   */
+    APP_MENU_PAGE_KEY_TEST,    /**< 按键测试                       */
+    APP_MENU_PAGE_WATER_TEST   /**< 供水测试（阀+泵）              */
 } App_Menu_Page;
 
-/**
- * @brief   菜单模块初始化
- * @note    清空内部状态；不进入菜单，需调用 App_Menu_Enter 才开始绘制。
- */
 void App_Menu_Init(void);
-
-/**
- * @brief   进入菜单（一次性切换到主菜单页）
- */
 void App_Menu_Enter(void);
-
-/**
- * @brief   主循环周期调用（节流到 ~ 30 ms）
- * @note    更新动画、自动取消手动测试残留电平等；本身不绘制 OLED，
- *          绘制由 App_Display 在 MENU 状态委托完成。
- */
+/** 进入设置页（串口调试从设置返回时使用） */
+void App_Menu_EnterSettings(void);
 void App_Menu_Tick(void);
-
-/**
- * @brief   将事件喂给菜单
- * @param   e  非 NULL，通常是 K1..K4 SHORT/LONG
- */
 void App_Menu_OnEvent(const App_Event *e);
 
-/**
- * @brief   是否请求退出菜单
- * @retval  true=主 FSM 应读取 ExitAction 后调用 ClearExit / false=继续留在菜单
- */
-bool App_Menu_ExitRequested(void);
-
-/**
- * @brief   读取退出动作（仅在 ExitRequested 为 true 时有意义）
- */
+bool            App_Menu_ExitRequested(void);
 App_Menu_Action App_Menu_GetExitAction(void);
-
-/**
- * @brief   清除退出请求（主 FSM 已消费动作后调用）
- */
-void App_Menu_ClearExit(void);
+void            App_Menu_ClearExit(void);
 
 /* ==== 供 App_Display 绘制使用的只读查询 ============================ */
 
-/**
- * @brief   当前页面
- */
 App_Menu_Page App_Menu_GetPage(void);
+uint8_t       App_Menu_GetCursor(void);
+uint8_t       App_Menu_GetItemCount(void);
+const char   *App_Menu_GetItemLabel(uint8_t idx);
+const char   *App_Menu_GetEditFieldName(void);
+int32_t       App_Menu_GetEditValue(void);
 
-/**
- * @brief   当前页面的光标行号
- */
-uint8_t App_Menu_GetCursor(void);
+/** PARAM_EDIT 页：是否正在编辑参数 */
+bool App_Menu_IsParamEditing(void);
 
-/**
- * @brief   当前页面的菜单项数（动态计算）
- */
-uint8_t App_Menu_GetItemCount(void);
+/** ch_en 编辑中当前选中的通道索引 0..4（Z1..Z5） */
+uint8_t App_Menu_GetChEnEditChannel(void);
 
-/**
- * @brief   取第 idx 项的显示文字（NULL 表示越界）
- */
-const char *App_Menu_GetItemLabel(uint8_t idx);
+/** WATER_TEST：泵百分比是否处于编辑态 */
+bool App_Menu_IsPumpEditing(void);
 
-/**
- * @brief   PARAM_EDIT 页：当前正在编辑的字段名
- */
-const char *App_Menu_GetEditFieldName(void);
+/** WATER_TEST：当前泵占空比缓存（%） */
+uint8_t App_Menu_GetPumpPercent(void);
 
-/**
- * @brief   PARAM_EDIT 页：当前编辑值
- */
-int32_t App_Menu_GetEditValue(void);
+/** SCREEN_TEST：当前图案索引 0..5 */
+uint8_t App_Menu_GetScreenPattern(void);
+
+/** KEY_TEST：K1..K4 按下掩码 bit0=K1 */
+uint8_t App_Menu_GetKeyTestMask(void);
 
 #endif /* APP_MENU_H */
